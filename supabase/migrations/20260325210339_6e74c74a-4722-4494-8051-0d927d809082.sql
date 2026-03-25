@@ -1,0 +1,1 @@
+DROP POLICY "RSVPs readable" ON public.rsvps;
