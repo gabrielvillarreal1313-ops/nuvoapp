@@ -271,19 +271,23 @@ const EventPage = () => {
               </h3>
 
               <div className="mb-4 flex gap-2">
-                {(["GOING", "MAYBE", "NO"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setRsvpForm(f => ({ ...f, status: s, partySize: s === 'NO' ? 1 : f.partySize }))}
-                    className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all ${
-                      rsvpForm.status === s
-                        ? `${STATUS_COLORS[s]} text-primary-foreground shadow-card`
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
-                  >
-                    {STATUS_LABELS[s]}
-                  </button>
-                ))}
+                {(["GOING", "MAYBE", "NO"] as const).map((s) => {
+                  const selected = rsvpForm.status === s;
+                  const textColor = s === 'MAYBE' ? 'text-foreground' : 'text-primary-foreground';
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setRsvpForm(f => ({ ...f, status: s, partySize: s === 'NO' ? 1 : f.partySize }))}
+                      className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all ${
+                        selected
+                          ? `${STATUS_COLORS[s]} ${textColor} shadow-card ring-2 ring-offset-2 ring-offset-background ring-foreground/20`
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      {STATUS_LABELS[s]}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="space-y-3">
