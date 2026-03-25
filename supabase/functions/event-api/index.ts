@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-token, x-edit-token, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
@@ -30,15 +31,8 @@ function err(msg: string, status = 400) {
   return json({ error: msg }, status);
 }
 
-function getBaseUrl(req: Request): string {
-  const origin = req.headers.get('origin') || req.headers.get('referer');
-  if (origin) {
-    try {
-      const u = new URL(origin);
-      return u.origin;
-    } catch {}
-  }
-  return 'https://id-preview--c0bb1f13-fa1a-4df1-8b55-d5c376cfc73d.lovable.app';
+function getBaseUrl(_req: Request): string {
+  return Deno.env.get('PUBLIC_APP_URL') || 'https://nuvoapp.lovable.app';
 }
 
 async function authorizeAdmin(db: any, eventKey: string, token: string) {
