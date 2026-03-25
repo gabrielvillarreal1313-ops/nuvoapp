@@ -30,6 +30,10 @@ const Auth = () => {
       toast.error("Nombre y apellido son requeridos");
       return;
     }
+    if (mode === "signup" && !form.phone.trim()) {
+      toast.error("El teléfono es requerido");
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "login") {
