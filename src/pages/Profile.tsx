@@ -26,6 +26,11 @@ const Profile = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
+  // Refresh profile on mount to ensure latest data
+  useEffect(() => {
+    refreshProfile();
+  }, []);
+
   useEffect(() => {
     if (profile) {
       const { firstName, lastName } = splitName(profile.name ?? "");
