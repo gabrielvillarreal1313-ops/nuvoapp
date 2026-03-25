@@ -160,7 +160,7 @@ const Auth = () => {
 
           {mode === "signup" && (
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">WhatsApp / Teléfono</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">WhatsApp / Teléfono *</label>
               <PhoneInput
                 value={form.phone}
                 onChange={(v) => setForm(f => ({ ...f, phone: v }))}
