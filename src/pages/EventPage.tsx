@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatEventDate, formatEventTime, getWhatsAppShareUrl, getShareInviteText, getShareUpdateText, copyToClipboard, PUBLIC_BASE_URL } from "@/lib/event-utils";
+import { buildDisplayAddress, buildGoogleMapsUrl } from "@/lib/address-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

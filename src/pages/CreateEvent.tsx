@@ -27,6 +27,14 @@ const CreateEvent = () => {
     endTime: "",
     locationName: "",
     locationUrl: "",
+    addressStreet: "",
+    addressExtNumber: "",
+    addressIntNumber: "",
+    addressNeighborhood: "",
+    addressCity: "",
+    addressState: "",
+    addressZip: "",
+    addressCountry: "México",
     coverImageUrl: "",
     privacyMode: "OPEN" as "OPEN" | "APPROVAL_REQUIRED",
     showAttendees: true,
@@ -61,6 +69,14 @@ const CreateEvent = () => {
         endAt: combineDateTime(form.endDate, form.endTime),
         locationName: form.locationName,
         locationUrl: form.locationUrl,
+        addressStreet: form.addressStreet,
+        addressExtNumber: form.addressExtNumber,
+        addressIntNumber: form.addressIntNumber,
+        addressNeighborhood: form.addressNeighborhood,
+        addressCity: form.addressCity,
+        addressState: form.addressState,
+        addressZip: form.addressZip,
+        addressCountry: form.addressCountry,
         coverImageUrl: form.coverImageUrl,
         privacyMode: form.privacyMode,
         showAttendees: form.showAttendees,
@@ -135,19 +151,60 @@ const CreateEvent = () => {
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="locationName">Lugar</Label>
-            <Input id="locationName" value={form.locationName} onChange={(e) => set("locationName", e.target.value)} placeholder="Casa de María" className="mt-1" />
-          </div>
-
-          <div>
-            <Label htmlFor="locationUrl">Link del lugar (opcional)</Label>
-            <Input id="locationUrl" value={form.locationUrl} onChange={(e) => set("locationUrl", e.target.value)} placeholder="https://maps.google.com/..." className="mt-1" />
-            {form.locationName && !form.locationUrl && (
+          {/* Dirección estructurada */}
+          <div className="space-y-3 rounded-xl border bg-card p-4 shadow-card">
+            <p className="font-display text-sm font-semibold">Ubicación</p>
+            <div>
+              <Label>Nombre del lugar (opcional)</Label>
+              <Input value={form.locationName} onChange={(e) => set("locationName", e.target.value)} placeholder="Casa de Ana, Terraza Roma..." className="mt-1" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-2">
+                <Label>Calle</Label>
+                <Input value={form.addressStreet} onChange={(e) => set("addressStreet", e.target.value)} placeholder="Av. Álvaro Obregón" className="mt-1" />
+              </div>
+              <div>
+                <Label>No. ext</Label>
+                <Input value={form.addressExtNumber} onChange={(e) => set("addressExtNumber", e.target.value)} placeholder="123" className="mt-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>No. int (opcional)</Label>
+                <Input value={form.addressIntNumber} onChange={(e) => set("addressIntNumber", e.target.value)} placeholder="4A" className="mt-1" />
+              </div>
+              <div>
+                <Label>Colonia</Label>
+                <Input value={form.addressNeighborhood} onChange={(e) => set("addressNeighborhood", e.target.value)} placeholder="Roma Norte" className="mt-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Ciudad</Label>
+                <Input value={form.addressCity} onChange={(e) => set("addressCity", e.target.value)} placeholder="Ciudad de México" className="mt-1" />
+              </div>
+              <div>
+                <Label>Estado</Label>
+                <Input value={form.addressState} onChange={(e) => set("addressState", e.target.value)} placeholder="CDMX" className="mt-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Código postal</Label>
+                <Input value={form.addressZip} onChange={(e) => set("addressZip", e.target.value)} placeholder="06700" className="mt-1" />
+              </div>
+              <div>
+                <Label>País</Label>
+                <Input value={form.addressCountry} onChange={(e) => set("addressCountry", e.target.value)} className="mt-1" />
+              </div>
+            </div>
+            <div>
+              <Label>Link personalizado (opcional)</Label>
+              <Input value={form.locationUrl} onChange={(e) => set("locationUrl", e.target.value)} placeholder="https://maps.google.com/..." className="mt-1" />
               <p className="mt-1 text-xs text-muted-foreground">
-                Se generará automáticamente un link a Google Maps con "{form.locationName}"
+                Si no lo pones, se generará automáticamente con Google Maps
               </p>
-            )}
+            </div>
           </div>
 
           <div>

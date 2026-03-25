@@ -399,18 +399,57 @@ const HostPanel = () => {
                     <TimeSelect value={editForm.endTime} onChange={(v) => setEditForm((f: any) => ({ ...f, endTime: v }))} placeholder="Hora" />
                   </div>
                 </div>
-                <div>
-                  <Label>Lugar</Label>
-                  <Input value={editForm.locationName} onChange={(e) => setEditForm((f: any) => ({ ...f, locationName: e.target.value }))} className="mt-1" />
-                </div>
-                <div>
-                  <Label>Link del lugar (opcional)</Label>
-                  <Input value={editForm.locationUrl} onChange={(e) => setEditForm((f: any) => ({ ...f, locationUrl: e.target.value }))} className="mt-1" placeholder="https://maps.google.com/..." />
-                  {editForm.locationName && !editForm.locationUrl && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Se generará automáticamente un link a Google Maps
-                    </p>
-                  )}
+                <div className="space-y-3 rounded-xl border bg-card p-4">
+                  <p className="font-display text-sm font-semibold">Ubicación</p>
+                  <div>
+                    <Label>Nombre del lugar (opcional)</Label>
+                    <Input value={editForm.locationName} onChange={(e) => setEditForm((f: any) => ({ ...f, locationName: e.target.value }))} className="mt-1" placeholder="Casa de Ana..." />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2">
+                      <Label>Calle</Label>
+                      <Input value={editForm.addressStreet} onChange={(e) => setEditForm((f: any) => ({ ...f, addressStreet: e.target.value }))} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label>No. ext</Label>
+                      <Input value={editForm.addressExtNumber} onChange={(e) => setEditForm((f: any) => ({ ...f, addressExtNumber: e.target.value }))} className="mt-1" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label>No. int</Label>
+                      <Input value={editForm.addressIntNumber} onChange={(e) => setEditForm((f: any) => ({ ...f, addressIntNumber: e.target.value }))} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label>Colonia</Label>
+                      <Input value={editForm.addressNeighborhood} onChange={(e) => setEditForm((f: any) => ({ ...f, addressNeighborhood: e.target.value }))} className="mt-1" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label>Ciudad</Label>
+                      <Input value={editForm.addressCity} onChange={(e) => setEditForm((f: any) => ({ ...f, addressCity: e.target.value }))} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label>Estado</Label>
+                      <Input value={editForm.addressState} onChange={(e) => setEditForm((f: any) => ({ ...f, addressState: e.target.value }))} className="mt-1" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label>C.P.</Label>
+                      <Input value={editForm.addressZip} onChange={(e) => setEditForm((f: any) => ({ ...f, addressZip: e.target.value }))} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label>País</Label>
+                      <Input value={editForm.addressCountry} onChange={(e) => setEditForm((f: any) => ({ ...f, addressCountry: e.target.value }))} className="mt-1" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Link personalizado (opcional)</Label>
+                    <Input value={editForm.locationUrl} onChange={(e) => setEditForm((f: any) => ({ ...f, locationUrl: e.target.value }))} className="mt-1" placeholder="https://maps.google.com/..." />
+                    <p className="mt-1 text-xs text-muted-foreground">Si no lo pones, se generará con Google Maps</p>
+                  </div>
                 </div>
                 <div>
                   <Label>Imagen de portada</Label>
