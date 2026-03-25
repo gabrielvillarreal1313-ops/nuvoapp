@@ -10,25 +10,26 @@ async function apiFetch(path: string, options: RequestInit = {}, extraParams?: R
     }
   }
 
-  const res = await fetch(url.toString(), {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_KEY,
-      ...(options.headers || {}),
-    },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || err.message || 'Error de red');
+  try {
+    const res = await fetch(url.toString(), {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        ...(options.headers || {}),
+      },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || err.message || 'Error de red');
+    }
+    return res.json();
+  } catch (error: any) {
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error('Error de conexión. Si estás en el preview de Lovable, prueba en la URL publicada.');
+    }
+    throw error;
   }
-  return res.json();
-} catch (error: any) {
-  if (error instanceof TypeError && error.message === 'Failed to fetch') {
-    throw new Error('Error de conexión. Si estás en el preview de Lovable, prueba en la URL publicada.');
-  }
-  throw error;
-}
 }
 
 export const api = {
