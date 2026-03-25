@@ -14,7 +14,252 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      event_admin_tokens: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          label: string | null
+          revoked_at: string | null
+          role: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          label?: string | null
+          revoked_at?: string | null
+          role?: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          label?: string | null
+          revoked_at?: string | null
+          role?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_admin_tokens_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          end_at: string | null
+          event_key: string
+          host_name: string | null
+          id: string
+          location_name: string | null
+          location_url: string | null
+          privacy_mode: string
+          rsvp_open: boolean
+          show_attendees: boolean
+          start_at: string
+          status: string
+          timezone: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          end_at?: string | null
+          event_key: string
+          host_name?: string | null
+          id?: string
+          location_name?: string | null
+          location_url?: string | null
+          privacy_mode?: string
+          rsvp_open?: boolean
+          show_attendees?: boolean
+          start_at: string
+          status?: string
+          timezone?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          end_at?: string | null
+          event_key?: string
+          host_name?: string | null
+          id?: string
+          location_name?: string | null
+          location_url?: string | null
+          privacy_mode?: string
+          rsvp_open?: boolean
+          show_attendees?: boolean
+          start_at?: string
+          status?: string
+          timezone?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          cover_url: string | null
+          created_at: string
+          id: string
+          name: string | null
+          phone: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id: string
+          name?: string | null
+          phone?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      rsvps: {
+        Row: {
+          approval_status: string
+          comment: string | null
+          created_at: string
+          deleted_at: string | null
+          device_id: string | null
+          edit_token: string
+          event_id: string
+          id: string
+          name: string
+          party_size: number
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approval_status?: string
+          comment?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          device_id?: string | null
+          edit_token: string
+          event_id: string
+          id?: string
+          name: string
+          party_size?: number
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approval_status?: string
+          comment?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          device_id?: string | null
+          edit_token?: string
+          event_id?: string
+          id?: string
+          name?: string
+          party_size?: number
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      updates: {
+        Row: {
+          author_role: string
+          content: string
+          created_at: string
+          deleted_at: string | null
+          event_id: string
+          id: string
+          image_url: string | null
+          link_url: string | null
+        }
+        Insert: {
+          author_role?: string
+          content: string
+          created_at?: string
+          deleted_at?: string | null
+          event_id: string
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+        }
+        Update: {
+          author_role?: string
+          content?: string
+          created_at?: string
+          deleted_at?: string | null
+          event_id?: string
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "updates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_events: {
+        Row: {
+          created_at: string
+          event_key: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_key: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_key?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
