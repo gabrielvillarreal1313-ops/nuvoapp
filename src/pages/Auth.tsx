@@ -69,9 +69,12 @@ const Auth = () => {
           <p className="text-sm text-muted-foreground">
             Enviamos un link de confirmación a <span className="font-semibold text-foreground">{form.email}</span>. Haz clic en el link para activar tu cuenta.
           </p>
-          <Button
+            <Button
             variant="outline"
-            onClick={() => navigate("/auth?mode=login")}
+            onClick={() => {
+              setEmailSent(false);
+              navigate("/auth?mode=login");
+            }}
             className="w-full mt-2"
           >
             Ir a iniciar sesión
