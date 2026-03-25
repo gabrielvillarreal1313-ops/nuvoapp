@@ -90,6 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         name: name.trim(),
         phone: phone.trim(),
       });
+      await fetchProfile(data.user.id);
     }
   };
 

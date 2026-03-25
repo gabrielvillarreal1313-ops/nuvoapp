@@ -30,6 +30,10 @@ const Auth = () => {
       toast.error("Nombre y apellido son requeridos");
       return;
     }
+    if (mode === "signup" && !form.phone.trim()) {
+      toast.error("El teléfono es requerido");
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "login") {
@@ -156,7 +160,7 @@ const Auth = () => {
 
           {mode === "signup" && (
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">WhatsApp / Teléfono</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">WhatsApp / Teléfono *</label>
               <PhoneInput
                 value={form.phone}
                 onChange={(v) => setForm(f => ({ ...f, phone: v }))}
