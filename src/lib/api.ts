@@ -23,6 +23,12 @@ async function apiFetch(path: string, options: RequestInit = {}, extraParams?: R
     throw new Error(err.error || err.message || 'Error de red');
   }
   return res.json();
+} catch (error: any) {
+  if (error instanceof TypeError && error.message === 'Failed to fetch') {
+    throw new Error('Error de conexión. Si estás en el preview de Lovable, prueba en la URL publicada.');
+  }
+  throw error;
+}
 }
 
 export const api = {

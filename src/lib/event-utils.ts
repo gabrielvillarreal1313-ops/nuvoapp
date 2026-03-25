@@ -1,7 +1,7 @@
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
-export const PUBLIC_BASE_URL = window.location.origin;
+export const PUBLIC_BASE_URL = import.meta.env.VITE_PUBLIC_URL || "https://nuvoapp.lovable.app";
 
 export function formatEventDate(dateStr: string, timezone?: string): string {
   const date = parseISO(dateStr);
