@@ -31,15 +31,8 @@ function err(msg: string, status = 400) {
   return json({ error: msg }, status);
 }
 
-function getBaseUrl(req: Request): string {
-  const origin = req.headers.get('origin') || req.headers.get('referer');
-  if (origin) {
-    try {
-      const u = new URL(origin);
-      return u.origin;
-    } catch {}
-  }
-  return 'https://id-preview--c0bb1f13-fa1a-4df1-8b55-d5c376cfc73d.lovable.app';
+function getBaseUrl(_req: Request): string {
+  return Deno.env.get('PUBLIC_APP_URL') || 'https://nuvoapp.lovable.app';
 }
 
 async function authorizeAdmin(db: any, eventKey: string, token: string) {
