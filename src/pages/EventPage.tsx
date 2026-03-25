@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatEventDate, formatEventTime, getWhatsAppShareUrl, getShareInviteText, getShareUpdateText, copyToClipboard, PUBLIC_BASE_URL } from "@/lib/event-utils";
+import { buildDisplayAddress, buildGoogleMapsUrl } from "@/lib/address-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -203,19 +204,29 @@ const EventPage = () => {
               <Clock className="h-4 w-4 text-primary" />
               <span>{formatEventTime(event.start_at)}{event.end_at ? ` — ${formatEventTime(event.end_at)}` : ''}</span>
             </div>
-            {event.location_name && (
-              <div className="flex items-center gap-2 text-sm">
-                <MapPin className="h-4 w-4 text-primary" />
-                <a
-                  href={event.location_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location_name)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary underline"
-                >
-                  {event.location_name}
-                </a>
-              </div>
-            )}
+            {(event.location_name || event.address_street) && (() => {
+              const address = buildDisplayAddress(event);
+              const mapsUrl = event.location_url || buildGoogleMapsUrl(event);
+              return (
+                <div className="flex items-start gap-2 text-sm">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div>
+                    {event.location_name && <span className="font-medium">{event.location_name}</span>}
+                    {address && (
+                      <>
+                        {event.location_name && <br />}
+                        <span className="text-muted-foreground">{address}</span>
+                      </>
+                    )}
+                    {mapsUrl && (
+                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="ml-1 text-primary underline text-xs">
+                        Ver en mapa
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {event.description && <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{event.description}</p>}
@@ -271,19 +282,23 @@ const EventPage = () => {
               </h3>
 
               <div className="mb-4 flex gap-2">
-                {(["GOING", "MAYBE", "NO"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setRsvpForm(f => ({ ...f, status: s, partySize: s === 'NO' ? 1 : f.partySize }))}
-                    className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all ${
-                      rsvpForm.status === s
-                        ? `${STATUS_COLORS[s]} text-primary-foreground shadow-card`
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
-                  >
-                    {STATUS_LABELS[s]}
-                  </button>
-                ))}
+                {(["GOING", "MAYBE", "NO"] as const).map((s) => {
+                  const selected = rsvpForm.status === s;
+                  const textColor = s === 'MAYBE' ? 'text-foreground' : 'text-primary-foreground';
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setRsvpForm(f => ({ ...f, status: s, partySize: s === 'NO' ? 1 : f.partySize }))}
+                      className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all ${
+                        selected
+                          ? `${STATUS_COLORS[s]} ${textColor} shadow-card ring-2 ring-offset-2 ring-offset-background ring-foreground/20`
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      {STATUS_LABELS[s]}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="space-y-3">

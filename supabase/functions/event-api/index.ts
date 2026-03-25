@@ -80,6 +80,14 @@ Deno.serve(async (req) => {
         timezone: body.timezone || 'America/Mexico_City',
         location_name: body.locationName || null,
         location_url: body.locationUrl || null,
+        address_street: body.addressStreet || null,
+        address_ext_number: body.addressExtNumber || null,
+        address_int_number: body.addressIntNumber || null,
+        address_neighborhood: body.addressNeighborhood || null,
+        address_city: body.addressCity || null,
+        address_state: body.addressState || null,
+        address_zip: body.addressZip || null,
+        address_country: body.addressCountry || 'México',
         cover_image_url: body.coverImageUrl || null,
         privacy_mode: body.privacyMode || 'OPEN',
         show_attendees: body.showAttendees !== false,
@@ -285,13 +293,17 @@ Deno.serve(async (req) => {
       if (!auth) return err('No autorizado', 401);
 
       const body = await req.json();
-      const allowed = ['title', 'description', 'start_at', 'end_at', 'timezone', 'location_name', 'location_url', 'cover_image_url', 'privacy_mode', 'show_attendees', 'rsvp_open', 'status'];
+      const allowed = ['title', 'description', 'start_at', 'end_at', 'timezone', 'location_name', 'location_url', 'address_street', 'address_ext_number', 'address_int_number', 'address_neighborhood', 'address_city', 'address_state', 'address_zip', 'address_country', 'cover_image_url', 'privacy_mode', 'show_attendees', 'rsvp_open', 'status'];
       const updates: any = {};
       const mapping: any = {
         startAt: 'start_at', endAt: 'end_at', locationName: 'location_name',
         locationUrl: 'location_url', coverImageUrl: 'cover_image_url',
         privacyMode: 'privacy_mode', showAttendees: 'show_attendees',
         rsvpOpen: 'rsvp_open', hostName: 'host_name',
+        addressStreet: 'address_street', addressExtNumber: 'address_ext_number',
+        addressIntNumber: 'address_int_number', addressNeighborhood: 'address_neighborhood',
+        addressCity: 'address_city', addressState: 'address_state',
+        addressZip: 'address_zip', addressCountry: 'address_country',
       };
       for (const [key, val] of Object.entries(body)) {
         const dbKey = mapping[key] || key;
