@@ -26,8 +26,10 @@ const ImageUpload = ({ value, onChange }: ImageUploadProps) => {
 
     setUploading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Debes iniciar sesión para subir imágenes");
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `${crypto.randomUUID()}.${ext}`;
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
 
       const { error } = await supabase.storage
         .from("event-covers")
