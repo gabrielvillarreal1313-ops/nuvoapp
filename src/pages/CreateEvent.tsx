@@ -87,7 +87,7 @@ const CreateEvent = () => {
       saved.unshift({
         eventKey: result.event.event_key,
         title: result.event.title,
-        hostUrl: `/h/${result.event.event_key}?t=${result.hostToken}`,
+        hostUrl: `/h/${result.event.event_key}`,
         startAt: result.event.start_at,
         role: "host",
       });

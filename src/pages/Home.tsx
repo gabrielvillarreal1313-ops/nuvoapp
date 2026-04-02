@@ -3,12 +3,16 @@ import { Plus, PartyPopper, Calendar, ChevronRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { formatEventDate, formatEventTime } from "@/lib/event-utils";
+import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SavedEvent {
   eventKey: string;
   title: string;
-  hostUrl: string;
+  hostUrl?: string;
   startAt?: string;
+  coverImageUrl?: string | null;
+  status?: string;
   role: "host" | "guest";
 }
 
@@ -25,6 +29,7 @@ function getFirstDayOfWeek(year: number, month: number) {
 
 const Home = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [hostEvents, setHostEvents] = useState<SavedEvent[]>([]);
   const [guestEvents, setGuestEvents] = useState<SavedEvent[]>([]);
   const [today] = useState(new Date());
@@ -33,13 +38,41 @@ const Home = () => {
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
 
   useEffect(() => {
+    let legacyHostEvents: SavedEvent[] = [];
+
     try {
       const raw = localStorage.getItem("hostEvents");
       if (raw) {
         const parsed = JSON.parse(raw);
-        setHostEvents(parsed.map((e: any) => ({ ...e, role: "host" as const })));
+        legacyHostEvents = parsed.map((e: any) => ({ ...e, role: "host" as const }));
       }
     } catch {}
+
+    const loadHostedEvents = async () => {
+      if (!user) {
+        setHostEvents(legacyHostEvents);
+        return;
+      }
+
+      try {
+        const response = await api.getMyHostedEvents();
+        const backendEvents: SavedEvent[] = (response.events || []).map((event: any) => ({
+          eventKey: event.event_key,
+          title: event.title,
+          hostUrl: `/h/${event.event_key}`,
+          startAt: event.start_at || undefined,
+          status: event.status,
+          coverImageUrl: event.cover_image_url || null,
+          role: "host" as const,
+        }));
+        setHostEvents(backendEvents);
+      } catch {
+        setHostEvents(legacyHostEvents);
+      }
+    };
+
+    loadHostedEvents();
+
     try {
       const raw = localStorage.getItem("guestEvents");
       if (raw) {
@@ -47,7 +80,7 @@ const Home = () => {
         setGuestEvents(parsed.map((e: any) => ({ ...e, role: "guest" as const })));
       }
     } catch {}
-  }, []);
+  }, [user?.id]);
 
   const allEvents: SavedEvent[] = [...hostEvents, ...guestEvents];
 
@@ -166,7 +199,7 @@ const Home = () => {
                 {selectedDayEvents.map((ev) => (
                   <Link
                     key={`sel-${ev.role}-${ev.eventKey}`}
-                    to={ev.role === "host" ? ev.hostUrl : `/e/${ev.eventKey}`}
+                    to={ev.role === "host" ? (ev.hostUrl || `/h/${ev.eventKey}`) : `/e/${ev.eventKey}`}
                     className="flex items-center gap-3 rounded-xl border bg-card p-3 shadow-card hover:shadow-elevated transition-all"
                   >
                     <div className="gradient-primary h-10 w-10 rounded-xl flex items-center justify-center shrink-0">
@@ -214,7 +247,7 @@ const Home = () => {
               {upcomingEvents.map((ev) => (
                 <Link
                   key={`${ev.role}-${ev.eventKey}`}
-                  to={ev.role === "host" ? ev.hostUrl : `/e/${ev.eventKey}`}
+                  to={ev.role === "host" ? (ev.hostUrl || `/h/${ev.eventKey}`) : `/e/${ev.eventKey}`}
                   className="flex items-center gap-3 rounded-xl border bg-card p-3 shadow-card hover:shadow-elevated transition-all"
                 >
                   <div className="gradient-primary h-10 w-10 rounded-xl flex items-center justify-center shrink-0">
@@ -263,7 +296,7 @@ const Home = () => {
               {pastEvents.map((ev) => (
                 <Link
                   key={`past-${ev.role}-${ev.eventKey}`}
-                  to={ev.role === "host" ? ev.hostUrl : `/e/${ev.eventKey}`}
+                  to={ev.role === "host" ? (ev.hostUrl || `/h/${ev.eventKey}`) : `/e/${ev.eventKey}`}
                   className="flex items-center gap-3 rounded-xl border bg-card p-3 opacity-60 hover:opacity-80 transition-opacity"
                 >
                   <Clock className="h-4 w-4 text-muted-foreground shrink-0" />

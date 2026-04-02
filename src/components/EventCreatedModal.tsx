@@ -74,7 +74,7 @@ const EventCreatedModal = ({ data }: Props) => {
             </div>
           </div>
 
-          <Button variant="outline" className="mt-6 w-full" onClick={() => navigate(`/h/${data.event.event_key}?t=${data.hostToken}`)}>
+          <Button variant="outline" className="mt-6 w-full" onClick={() => navigate(`/h/${data.event.event_key}`)}>
             Ir al panel de administración →
           </Button>
         </div>

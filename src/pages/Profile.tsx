@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import PhoneInput from "@/components/PhoneInput";
+import { api } from "@/lib/api";
 
 function splitName(fullName: string): { firstName: string; lastName: string } {
   const parts = (fullName || "").trim().split(/\s+/);
@@ -40,13 +41,19 @@ const Profile = () => {
 
   useEffect(() => {
     if (!user) return;
+
+    api.getMyHostedEvents()
+      .then((response) => {
+        setHostEvents(response.events || []);
+      })
+      .catch(() => setHostEvents([]));
+
     supabase
       .from("user_events")
       .select("id, role")
       .eq("user_id", user.id)
       .then(({ data }) => {
         if (data) {
-          setHostEvents(data.filter(e => e.role === "HOST"));
           setGuestEvents(data.filter(e => e.role !== "HOST"));
         }
       });
