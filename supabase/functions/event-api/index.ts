@@ -234,10 +234,19 @@ Deno.serve(async (req) => {
     if (path === 'me/hosted-events' && method === 'GET') {
       if (!authUser) return err('Autenticación requerida', 401);
 
+      // Get event_keys where user is host via user_events
+      const { data: ueRows, error: ueErr } = await db.from('user_events')
+        .select('event_key')
+        .eq('user_id', authUser.id)
+        .eq('role', 'host');
+      if (ueErr) return err(ueErr.message, 500);
+
+      const eventKeys = (ueRows || []).map((r: any) => r.event_key);
+      if (eventKeys.length === 0) return json({ events: [] });
+
       const { data, error: hostedErr } = await db.from('events')
         .select('event_key, title, start_at, status, cover_image_url')
-        .eq('owner_user_id', authUser.id)
-        .is('deleted_at', null)
+        .in('event_key', eventKeys)
         .order('start_at', { ascending: true, nullsFirst: false });
 
       if (hostedErr) return err(hostedErr.message, 500);
@@ -248,31 +257,23 @@ Deno.serve(async (req) => {
     if (path === 'me/guest-events' && method === 'GET') {
       if (!authUser) return err('Autenticación requerida', 401);
 
-      const { data, error: guestErr } = await db.from('rsvps')
-        .select('event_id, status, approval_status, created_at, events!inner(event_key, title, start_at, status, cover_image_url, deleted_at)')
+      // Get event_keys where user is guest via user_events
+      const { data: ueRows, error: ueErr } = await db.from('user_events')
+        .select('event_key')
         .eq('user_id', authUser.id)
-        .is('deleted_at', null)
-        .is('events.deleted_at', null)
-        .order('created_at', { ascending: false });
+        .eq('role', 'guest');
+      if (ueErr) return err(ueErr.message, 500);
 
-      if (guestErr) return err(guestErr.message, 500);
+      const eventKeys = (ueRows || []).map((r: any) => r.event_key);
+      if (eventKeys.length === 0) return json({ events: [] });
 
-      const deduped = new Map<string, any>();
-      for (const row of data || []) {
-        const event = row.events;
-        if (!event?.event_key || deduped.has(event.event_key)) continue;
-        deduped.set(event.event_key, {
-          event_key: event.event_key,
-          title: event.title,
-          start_at: event.start_at,
-          status: event.status,
-          cover_image_url: event.cover_image_url,
-          my_rsvp_status: row.status,
-          approval_status: row.approval_status,
-        });
-      }
+      const { data, error: evErr } = await db.from('events')
+        .select('event_key, title, start_at, status, cover_image_url')
+        .in('event_key', eventKeys)
+        .order('start_at', { ascending: false });
 
-      return json({ events: Array.from(deduped.values()) });
+      if (evErr) return err(evErr.message, 500);
+      return json({ events: data || [] });
     }
 
     // POST /events/:eventKey/rsvps
