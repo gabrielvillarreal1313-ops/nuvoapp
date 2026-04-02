@@ -63,8 +63,6 @@ const EventPage = () => {
 
       if (user && data.my_rsvp) {
         resolvedRsvp = data.my_rsvp;
-      } else if (myToken && data.rsvps) {
-        resolvedRsvp = data.rsvps.find((r: any) => r.edit_token === myToken) || null;
       }
 
       if (!resolvedRsvp && user && myToken) {
@@ -119,7 +117,7 @@ const EventPage = () => {
     const submitData = { name: fullName, phone: rsvpForm.phone, status: rsvpForm.status, partySize: rsvpForm.partySize, comment: rsvpForm.comment };
     try {
       if (editMode && myRsvp) {
-        const et = getStoredRsvpToken(eventKey!) || myRsvp.edit_token || myRsvp.editToken;
+        const et = getStoredRsvpToken(eventKey!) || myRsvp.editToken;
         await api.updateRsvp(eventKey!, myRsvp.id, et, submitData);
         toast.success("RSVP actualizado");
       } else {
@@ -163,7 +161,7 @@ const EventPage = () => {
   const handleDeleteRsvp = async () => {
     if (!myRsvp) return;
     const tokens = JSON.parse(localStorage.getItem('rsvpTokens') || '{}');
-    const et = tokens[eventKey!] || myRsvp.edit_token || myRsvp.editToken;
+    const et = tokens[eventKey!] || myRsvp.editToken;
     try {
       await api.deleteRsvp(eventKey!, myRsvp.id, et);
       delete tokens[eventKey!];
