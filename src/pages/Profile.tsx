@@ -48,15 +48,11 @@ const Profile = () => {
       })
       .catch(() => setHostEvents([]));
 
-    supabase
-      .from("user_events")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .then(({ data }) => {
-        if (data) {
-          setGuestEvents(data.filter(e => e.role !== "HOST"));
-        }
-      });
+    api.getMyGuestEvents()
+      .then((response) => {
+        setGuestEvents(response.events || []);
+      })
+      .catch(() => setGuestEvents([]));
   }, [user]);
 
   const saveProfile = async () => {

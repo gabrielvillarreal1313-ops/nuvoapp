@@ -16,6 +16,17 @@ interface SavedEvent {
   role: "host" | "guest";
 }
 
+function mergeGuestEvents(backendEvents: SavedEvent[], legacyEvents: SavedEvent[]): SavedEvent[] {
+  const byEventKey = new Map<string, SavedEvent>();
+  backendEvents.forEach((event) => byEventKey.set(event.eventKey, event));
+  legacyEvents.forEach((event) => {
+    if (!byEventKey.has(event.eventKey)) {
+      byEventKey.set(event.eventKey, event);
+    }
+  });
+  return Array.from(byEventKey.values());
+}
+
 const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const DAYS_ES = ["Lu","Ma","Mi","Ju","Vi","Sá","Do"];
 
@@ -39,6 +50,7 @@ const Home = () => {
 
   useEffect(() => {
     let legacyHostEvents: SavedEvent[] = [];
+    let legacyGuestEvents: SavedEvent[] = [];
 
     try {
       const raw = localStorage.getItem("hostEvents");
@@ -77,9 +89,33 @@ const Home = () => {
       const raw = localStorage.getItem("guestEvents");
       if (raw) {
         const parsed = JSON.parse(raw);
-        setGuestEvents(parsed.map((e: any) => ({ ...e, role: "guest" as const })));
+        legacyGuestEvents = parsed.map((e: any) => ({ ...e, role: "guest" as const }));
       }
     } catch {}
+
+    const loadGuestEvents = async () => {
+      if (!user) {
+        setGuestEvents(legacyGuestEvents);
+        return;
+      }
+
+      try {
+        const response = await api.getMyGuestEvents();
+        const backendGuestEvents: SavedEvent[] = (response.events || []).map((event: any) => ({
+          eventKey: event.event_key,
+          title: event.title,
+          startAt: event.start_at || undefined,
+          status: event.status,
+          coverImageUrl: event.cover_image_url || null,
+          role: "guest" as const,
+        }));
+        setGuestEvents(mergeGuestEvents(backendGuestEvents, legacyGuestEvents));
+      } catch {
+        setGuestEvents(legacyGuestEvents);
+      }
+    };
+
+    loadGuestEvents();
   }, [user?.id]);
 
   const allEvents: SavedEvent[] = [...hostEvents, ...guestEvents];

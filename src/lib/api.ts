@@ -61,10 +61,19 @@ export const api = {
   getMyHostedEvents: () =>
     apiFetch('me/hosted-events'),
 
+  getMyGuestEvents: () =>
+    apiFetch('me/guest-events'),
+
   createRsvp: (eventKey: string, data: any) =>
     apiFetch(`events/${eventKey}/rsvps`, {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+
+  claimRsvp: (eventKey: string, editToken: string) =>
+    apiFetch(`events/${eventKey}/rsvps/claim`, {
+      method: 'POST',
+      body: JSON.stringify({ editToken }),
     }),
 
   updateRsvp: (eventKey: string, rsvpId: string, editToken: string, data: any) =>

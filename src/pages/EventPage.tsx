@@ -16,6 +16,15 @@ const STATUS_LABELS: Record<string, string> = { GOING: "Voy 🎉", MAYBE: "Tal v
 const STATUS_COLORS: Record<string, string> = { GOING: "bg-going", MAYBE: "bg-warning", NO: "bg-no" };
 const STATUS_LABELS_SHORT: Record<string, string> = { GOING: "Voy", MAYBE: "Tal vez", NO: "No voy" };
 
+function getStoredRsvpToken(eventKey: string): string | null {
+  try {
+    const tokens = JSON.parse(localStorage.getItem("rsvpTokens") || "{}");
+    return tokens[eventKey] || null;
+  } catch {
+    return null;
+  }
+}
+
 const EventPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -49,18 +58,39 @@ const EventPage = () => {
       const data = await api.getEvent(eventKey!);
       setEvent(data);
 
-      const tokens = JSON.parse(localStorage.getItem('rsvpTokens') || '{}');
-      const myToken = tokens[eventKey!];
-      if (myToken && data.rsvps) {
-        const mine = data.rsvps.find((r: any) => r.edit_token === myToken);
-        if (mine) {
-          const parts = (mine.name || "").trim().split(/\s+/);
-          setMyRsvp(mine);
-          setRsvpForm({ firstName: parts[0] || "", lastName: parts.slice(1).join(" ") || "", phone: mine.phone || "", status: mine.status, partySize: mine.party_size, comment: mine.comment || "" });
+      const myToken = getStoredRsvpToken(eventKey!);
+      let resolvedRsvp = null;
+
+      if (user && data.my_rsvp) {
+        resolvedRsvp = data.my_rsvp;
+      } else if (myToken && data.rsvps) {
+        resolvedRsvp = data.rsvps.find((r: any) => r.edit_token === myToken) || null;
+      }
+
+      if (!resolvedRsvp && user && myToken) {
+        try {
+          const claimed = await api.claimRsvp(eventKey!, myToken);
+          resolvedRsvp = claimed?.rsvp || null;
+        } catch {
+          // keep legacy compatibility silently
         }
       }
-      if (myToken && !myRsvp) {
+
+      if (resolvedRsvp) {
+        const parts = (resolvedRsvp.name || "").trim().split(/\s+/);
+        setMyRsvp(resolvedRsvp);
+        setRsvpForm({
+          firstName: parts[0] || "",
+          lastName: parts.slice(1).join(" ") || "",
+          phone: resolvedRsvp.phone || "",
+          status: resolvedRsvp.status,
+          partySize: resolvedRsvp.party_size,
+          comment: resolvedRsvp.comment || "",
+        });
+      } else if (myToken) {
         setMyRsvp({ editToken: myToken, pending: true });
+      } else {
+        setMyRsvp(null);
       }
     } catch (err: any) {
       setError(err.message || "Error al cargar evento");
@@ -89,8 +119,7 @@ const EventPage = () => {
     const submitData = { name: fullName, phone: rsvpForm.phone, status: rsvpForm.status, partySize: rsvpForm.partySize, comment: rsvpForm.comment };
     try {
       if (editMode && myRsvp) {
-        const tokens = JSON.parse(localStorage.getItem('rsvpTokens') || '{}');
-        const et = tokens[eventKey!] || myRsvp.edit_token;
+        const et = getStoredRsvpToken(eventKey!) || myRsvp.edit_token || myRsvp.editToken;
         await api.updateRsvp(eventKey!, myRsvp.id, et, submitData);
         toast.success("RSVP actualizado");
       } else {
@@ -134,7 +163,7 @@ const EventPage = () => {
   const handleDeleteRsvp = async () => {
     if (!myRsvp) return;
     const tokens = JSON.parse(localStorage.getItem('rsvpTokens') || '{}');
-    const et = tokens[eventKey!] || myRsvp.edit_token;
+    const et = tokens[eventKey!] || myRsvp.edit_token || myRsvp.editToken;
     try {
       await api.deleteRsvp(eventKey!, myRsvp.id, et);
       delete tokens[eventKey!];
