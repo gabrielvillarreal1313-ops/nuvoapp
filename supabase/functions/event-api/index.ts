@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
 
       // Source of truth: events.owner_user_id (legacy user_events intentionally not used here)
       const { data, error: hostedErr } = await db.from('events')
-        .select('event_key, title, start_at, status, cover_image_url')
+        .select('event_key, title, start_at, timezone, status, cover_image_url')
         .eq('owner_user_id', authUser.id)
         .is('deleted_at', null)
         .order('start_at', { ascending: true, nullsFirst: false });
@@ -314,7 +314,7 @@ Deno.serve(async (req) => {
       if (eventIds.length === 0) return json({ events: [] });
 
       const { data: events, error: evErr } = await db.from('events')
-        .select('id, event_key, title, start_at, status, cover_image_url')
+        .select('id, event_key, title, start_at, timezone, status, cover_image_url')
         .in('id', eventIds)
         .is('deleted_at', null);
 
@@ -329,6 +329,7 @@ Deno.serve(async (req) => {
             event_key: event.event_key,
             title: event.title,
             start_at: event.start_at,
+            timezone: event.timezone,
             status: event.status,
             cover_image_url: event.cover_image_url,
             my_rsvp_status: rsvp.status,
