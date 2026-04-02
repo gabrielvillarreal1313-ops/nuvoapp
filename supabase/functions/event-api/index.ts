@@ -39,10 +39,44 @@ function getBaseUrl(_req: Request): string {
   return Deno.env.get('PUBLIC_APP_URL') || 'https://nuvoapp.lovable.app';
 }
 
-function mapRsvpResponse(rsvp: any) {
+function mapOwnedRsvp(rsvp: any) {
   return {
-    ...rsvp,
+    id: rsvp.id,
+    event_id: rsvp.event_id,
+    name: rsvp.name,
+    phone: rsvp.phone,
+    status: rsvp.status,
+    party_size: rsvp.party_size,
+    comment: rsvp.comment,
+    approval_status: rsvp.approval_status,
+    created_at: rsvp.created_at,
+    updated_at: rsvp.updated_at,
     editToken: rsvp.edit_token,
+  };
+}
+
+function mapPublicRsvp(rsvp: any) {
+  return {
+    id: rsvp.id,
+    name: rsvp.name,
+    status: rsvp.status,
+    party_size: rsvp.party_size,
+    comment: rsvp.comment,
+    avatar_url: rsvp.avatar_url || null,
+  };
+}
+
+function mapMyRsvp(rsvp: any) {
+  return {
+    id: rsvp.id,
+    name: rsvp.name,
+    phone: rsvp.phone,
+    status: rsvp.status,
+    party_size: rsvp.party_size,
+    comment: rsvp.comment,
+    approval_status: rsvp.approval_status,
+    created_at: rsvp.created_at,
+    updated_at: rsvp.updated_at,
   };
 }
 
@@ -162,11 +196,51 @@ Deno.serve(async (req) => {
         .single();
       if (!event) return err('Evento no encontrado', 404);
 
-      const { data: rsvps } = await db.from('rsvps')
-        .select('*')
-        .eq('event_id', event.id)
-        .is('deleted_at', null)
-        .in('approval_status', ['APPROVED']);
+      let ownRsvp: any = null;
+      if (authUser) {
+        const { data } = await db.from('rsvps')
+          .select('id, name, phone, status, party_size, comment, approval_status, created_at, updated_at')
+          .eq('event_id', event.id)
+          .eq('user_id', authUser.id)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        ownRsvp = data || null;
+      }
+
+      const canViewAttendees = Boolean(event.show_attendees && authUser && ownRsvp);
+
+      // Privacy policy for visible attendees:
+      // - show_attendees=false: never return attendee rows.
+      // - show_attendees=true: only authenticated guests with an RSVP can see attendee list.
+      // This keeps attendee visibility aligned with the current frontend UX and avoids broad public exposure.
+      let publicAttendees: any[] = [];
+      if (canViewAttendees) {
+        const { data: approvedRsvps } = await db.from('rsvps')
+          .select('id, name, status, party_size, comment, phone')
+          .eq('event_id', event.id)
+          .is('deleted_at', null)
+          .eq('approval_status', 'APPROVED');
+
+        // Match RSVPs with profile avatars by phone (phone is only used server-side).
+        const phones = (approvedRsvps || []).map((r: any) => r.phone).filter(Boolean);
+        let avatarMap: Record<string, string> = {};
+        if (phones.length > 0) {
+          const { data: profiles } = await db.from('profiles')
+            .select('phone, avatar_url')
+            .in('phone', phones)
+            .not('avatar_url', 'is', null);
+          (profiles || []).forEach((p: any) => {
+            if (p.phone && p.avatar_url) avatarMap[p.phone] = p.avatar_url;
+          });
+        }
+
+        publicAttendees = (approvedRsvps || []).map((r: any) => mapPublicRsvp({
+          ...r,
+          avatar_url: r.phone ? avatarMap[r.phone] || null : null,
+        }));
+      }
 
       const { data: allRsvps } = await db.from('rsvps')
         .select('id, status, party_size, approval_status')
@@ -185,48 +259,18 @@ Deno.serve(async (req) => {
         if (r.approval_status === 'PENDING') counts.pending++;
       });
 
-      // Match RSVPs with profile avatars by phone
-      const phones = (rsvps || []).map((r: any) => r.phone).filter(Boolean);
-      let avatarMap: Record<string, string> = {};
-      if (phones.length > 0) {
-        const { data: profiles } = await db.from('profiles')
-          .select('phone, avatar_url')
-          .in('phone', phones)
-          .not('avatar_url', 'is', null);
-        (profiles || []).forEach((p: any) => {
-          if (p.phone && p.avatar_url) avatarMap[p.phone] = p.avatar_url;
-        });
-      }
-      const rsvpsWithAvatars = (rsvps || []).map((r: any) => ({
-        ...r,
-        avatar_url: r.phone ? avatarMap[r.phone] || null : null,
-      }));
-
       const { data: updates } = await db.from('updates')
         .select('*')
         .eq('event_id', event.id)
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
-      let myRsvp: any = null;
-      if (authUser) {
-        const { data: ownRsvp } = await db.from('rsvps')
-          .select('*')
-          .eq('event_id', event.id)
-          .eq('user_id', authUser.id)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        myRsvp = ownRsvp ? mapRsvpResponse(ownRsvp) : null;
-      }
-
       return json({
         ...event,
-        rsvps: event.show_attendees ? rsvpsWithAvatars : [],
+        rsvps: canViewAttendees ? publicAttendees : [],
         counts,
         updates: updates || [],
-        my_rsvp: myRsvp,
+        my_rsvp: ownRsvp ? mapMyRsvp(ownRsvp) : null,
       });
     }
 
@@ -331,7 +375,7 @@ Deno.serve(async (req) => {
             .select()
             .single();
           if (updateErr) return err(updateErr.message, 500);
-          return json(mapRsvpResponse(updated));
+          return json(mapOwnedRsvp(updated));
         }
       }
 
@@ -354,11 +398,11 @@ Deno.serve(async (req) => {
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
-          if (fallback) return json(mapRsvpResponse(fallback));
+          if (fallback) return json(mapOwnedRsvp(fallback));
         }
         return err(rErr.message, 500);
       }
-      return json(mapRsvpResponse(rsvp));
+      return json(mapOwnedRsvp(rsvp));
     }
 
     // POST /events/:eventKey/rsvps/claim
@@ -391,7 +435,7 @@ Deno.serve(async (req) => {
       if (rsvp.user_id && rsvp.user_id !== authUser.id) return err('RSVP ya vinculada a otro usuario', 409);
 
       if (rsvp.user_id === authUser.id) {
-        return json({ claimed: false, rsvp: mapRsvpResponse(rsvp) });
+        return json({ claimed: false, rsvp: mapOwnedRsvp(rsvp) });
       }
 
       const { data: updated, error: claimErr } = await db.from('rsvps')
@@ -402,7 +446,7 @@ Deno.serve(async (req) => {
         .single();
       if (claimErr) return err(claimErr.message, 500);
 
-      return json({ claimed: true, rsvp: mapRsvpResponse(updated) });
+      return json({ claimed: true, rsvp: mapOwnedRsvp(updated) });
     }
 
     // PUT /events/:eventKey/rsvps/:rsvpId
@@ -410,7 +454,6 @@ Deno.serve(async (req) => {
     if (rsvpUpdate && method === 'PUT') {
       const [, eventKey, rsvpId] = rsvpUpdate;
       const et = url.searchParams.get('et') || req.headers.get('x-edit-token');
-      if (!et) return err('Token de edición requerido', 401);
 
       const { data: event } = await db
         .from('events')
@@ -422,8 +465,16 @@ Deno.serve(async (req) => {
       if (event.status === 'CANCELLED') return err('Evento cancelado');
       if (!event.rsvp_open) return err('RSVP cerrado');
 
-      const { data: rsvp } = await db.from('rsvps').select('*').eq('id', rsvpId).eq('edit_token', et).is('deleted_at', null).single();
+      const { data: rsvp } = await db.from('rsvps')
+        .select('*')
+        .eq('id', rsvpId)
+        .eq('event_id', event.id)
+        .is('deleted_at', null)
+        .single();
       if (!rsvp) return err('RSVP no encontrado', 404);
+      const canEditByToken = !!et && rsvp.edit_token === et;
+      const canEditByOwner = !!authUser && rsvp.user_id === authUser.id;
+      if (!canEditByToken && !canEditByOwner) return err('No autorizado', 401);
 
       const body = await req.json();
       const updates: any = {};
@@ -436,17 +487,31 @@ Deno.serve(async (req) => {
 
       const { data: updated, error: uErr } = await db.from('rsvps').update(updates).eq('id', rsvpId).select().single();
       if (uErr) return err(uErr.message, 500);
-      return json(updated);
+      return json(mapOwnedRsvp({ ...updated, edit_token: rsvp.edit_token }));
     }
 
     // DELETE /events/:eventKey/rsvps/:rsvpId
     if (rsvpUpdate && method === 'DELETE') {
       const [, eventKey, rsvpId] = rsvpUpdate;
       const et = url.searchParams.get('et') || req.headers.get('x-edit-token');
-      if (!et) return err('Token de edición requerido', 401);
+      const { data: event } = await db
+        .from('events')
+        .select('id')
+        .eq('event_key', eventKey)
+        .is('deleted_at', null)
+        .single();
+      if (!event) return err('Evento no encontrado', 404);
 
-      const { data: rsvp } = await db.from('rsvps').select('*').eq('id', rsvpId).eq('edit_token', et).is('deleted_at', null).single();
+      const { data: rsvp } = await db.from('rsvps')
+        .select('*')
+        .eq('id', rsvpId)
+        .eq('event_id', event.id)
+        .is('deleted_at', null)
+        .single();
       if (!rsvp) return err('RSVP no encontrado', 404);
+      const canEditByToken = !!et && rsvp.edit_token === et;
+      const canEditByOwner = !!authUser && rsvp.user_id === authUser.id;
+      if (!canEditByToken && !canEditByOwner) return err('No autorizado', 401);
 
       await db.from('rsvps').update({ deleted_at: new Date().toISOString() }).eq('id', rsvpId);
       return json({ ok: true });
