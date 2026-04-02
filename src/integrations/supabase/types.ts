@@ -64,6 +64,7 @@ export type Database = {
           address_zip: string | null
           cover_image_url: string | null
           created_at: string
+          deleted_at: string | null
           description: string | null
           end_at: string | null
           event_key: string
@@ -91,6 +92,7 @@ export type Database = {
           address_zip?: string | null
           cover_image_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           end_at?: string | null
           event_key: string
@@ -118,6 +120,7 @@ export type Database = {
           address_zip?: string | null
           cover_image_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           end_at?: string | null
           event_key?: string

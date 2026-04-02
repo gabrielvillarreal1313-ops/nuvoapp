@@ -52,7 +52,12 @@ async function getAuthUser(db: any, req: Request): Promise<AuthUser | null> {
 }
 
 async function authorizeAdmin(db: any, eventKey: string, token: string, userId?: string | null) {
-  const { data: event } = await db.from('events').select('id, owner_user_id').eq('event_key', eventKey).single();
+  const { data: event } = await db
+    .from('events')
+    .select('id, owner_user_id')
+    .eq('event_key', eventKey)
+    .is('deleted_at', null)
+    .single();
   if (!event) return null;
 
   if (userId && event.owner_user_id === userId) {
@@ -142,7 +147,12 @@ Deno.serve(async (req) => {
     const evMatch = path.match(/^events\/([^/]+)$/);
     if (evMatch && method === 'GET') {
       const eventKey = evMatch[1];
-      const { data: event } = await db.from('events').select('*').eq('event_key', eventKey).single();
+      const { data: event } = await db
+        .from('events')
+        .select('*')
+        .eq('event_key', eventKey)
+        .is('deleted_at', null)
+        .single();
       if (!event) return err('Evento no encontrado', 404);
 
       const { data: rsvps } = await db.from('rsvps')
@@ -206,7 +216,7 @@ Deno.serve(async (req) => {
       const { data, error: hostedErr } = await db.from('events')
         .select('event_key, title, start_at, status, cover_image_url')
         .eq('owner_user_id', authUser.id)
-        .neq('status', 'DELETED')
+        .is('deleted_at', null)
         .order('start_at', { ascending: true, nullsFirst: false });
 
       if (hostedErr) return err(hostedErr.message, 500);
@@ -217,7 +227,12 @@ Deno.serve(async (req) => {
     const rsvpCreate = path.match(/^events\/([^/]+)\/rsvps$/);
     if (rsvpCreate && method === 'POST') {
       const eventKey = rsvpCreate[1];
-      const { data: event } = await db.from('events').select('*').eq('event_key', eventKey).single();
+      const { data: event } = await db
+        .from('events')
+        .select('*')
+        .eq('event_key', eventKey)
+        .is('deleted_at', null)
+        .single();
       if (!event) return err('Evento no encontrado', 404);
       if (event.status === 'CANCELLED') return err('Evento cancelado');
       if (!event.rsvp_open) return err('RSVP cerrado');
@@ -255,7 +270,12 @@ Deno.serve(async (req) => {
       const et = url.searchParams.get('et') || req.headers.get('x-edit-token');
       if (!et) return err('Token de edición requerido', 401);
 
-      const { data: event } = await db.from('events').select('*').eq('event_key', eventKey).single();
+      const { data: event } = await db
+        .from('events')
+        .select('*')
+        .eq('event_key', eventKey)
+        .is('deleted_at', null)
+        .single();
       if (!event) return err('Evento no encontrado', 404);
       if (event.status === 'CANCELLED') return err('Evento cancelado');
       if (!event.rsvp_open) return err('RSVP cerrado');
@@ -365,7 +385,7 @@ Deno.serve(async (req) => {
       await db.from('rsvps').update({ deleted_at: new Date().toISOString() }).eq('event_id', auth.eventId);
       await db.from('updates').update({ deleted_at: new Date().toISOString() }).eq('event_id', auth.eventId);
       await db.from('event_admin_tokens').update({ revoked_at: new Date().toISOString() }).eq('event_id', auth.eventId);
-      const { error: delErr } = await db.from('events').update({ status: 'DELETED' }).eq('id', auth.eventId);
+      const { error: delErr } = await db.from('events').update({ deleted_at: new Date().toISOString() }).eq('id', auth.eventId);
       if (delErr) return err(delErr.message, 500);
       return json({ ok: true });
     }
