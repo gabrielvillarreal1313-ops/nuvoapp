@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatEventDate, formatEventTime, copyToClipboard, getWhatsAppShareUrl, getShareInviteText, PUBLIC_BASE_URL } from "@/lib/event-utils";
 import { Button } from "@/components/ui/button";
@@ -171,13 +170,8 @@ const HostPanel = () => {
       await api.deleteEvent(eventKey!, token || undefined);
       const hostEvents = JSON.parse(localStorage.getItem('hostEvents') || '[]');
       localStorage.setItem('hostEvents', JSON.stringify(hostEvents.filter((e: any) => e.eventKey !== eventKey)));
-      if (user) {
-        await supabase
-          .from("user_events")
-          .delete()
-          .eq("event_key", eventKey!)
-          .eq("user_id", user.id);
-      }
+      // Legacy cleanup only: local cache may still contain historic hostEvents entries.
+      // Source of truth for hosted events is events.owner_user_id on the backend.
       toast.success("Evento eliminado");
       navigate("/");
     } catch (err: any) { toast.error(err.message); }
