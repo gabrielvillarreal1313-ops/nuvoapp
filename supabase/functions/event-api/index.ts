@@ -9,6 +9,10 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+interface AuthUser {
+  id: string;
+}
+
 function genToken(len = 32): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
   const arr = new Uint8Array(len);
@@ -35,9 +39,27 @@ function getBaseUrl(_req: Request): string {
   return Deno.env.get('PUBLIC_APP_URL') || 'https://nuvoapp.lovable.app';
 }
 
-async function authorizeAdmin(db: any, eventKey: string, token: string) {
-  const { data: event } = await db.from('events').select('id').eq('event_key', eventKey).single();
+async function getAuthUser(db: any, req: Request): Promise<AuthUser | null> {
+  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return null;
+
+  const token = authHeader.slice(7).trim();
+  if (!token) return null;
+
+  const { data, error } = await db.auth.getUser(token);
+  if (error || !data.user) return null;
+  return { id: data.user.id };
+}
+
+async function authorizeAdmin(db: any, eventKey: string, token: string, userId?: string | null) {
+  const { data: event } = await db.from('events').select('id, owner_user_id').eq('event_key', eventKey).single();
   if (!event) return null;
+
+  if (userId && event.owner_user_id === userId) {
+    return { eventId: event.id, role: 'HOST', tokenId: null, via: 'owner' };
+  }
+
+  if (!token) return null;
 
   const { data: adminToken } = await db.from('event_admin_tokens')
     .select('*')
@@ -47,7 +69,7 @@ async function authorizeAdmin(db: any, eventKey: string, token: string) {
     .single();
 
   if (!adminToken) return null;
-  return { eventId: event.id, role: adminToken.role, tokenId: adminToken.id };
+  return { eventId: event.id, role: adminToken.role, tokenId: adminToken.id, via: 'token' };
 }
 
 Deno.serve(async (req) => {
@@ -60,10 +82,13 @@ Deno.serve(async (req) => {
   const path = url.searchParams.get('path') || '';
   const method = req.method;
   const baseUrl = getBaseUrl(req);
+  const authUser = await getAuthUser(db, req);
 
   try {
     // POST /events (create)
     if (path === 'events' && method === 'POST') {
+      if (!authUser) return err('Autenticación requerida', 401);
+
       const body = await req.json();
       if (!body.title || !body.startAt) return err('title y startAt son requeridos');
 
@@ -93,6 +118,7 @@ Deno.serve(async (req) => {
         show_attendees: body.showAttendees !== false,
         rsvp_open: body.rsvpOpen !== false,
         status: 'ACTIVE',
+        owner_user_id: authUser.id,
       }).select().single();
 
       if (evErr) return err(evErr.message, 500);
@@ -171,6 +197,20 @@ Deno.serve(async (req) => {
         counts,
         updates: updates || [],
       });
+    }
+
+    // GET /me/hosted-events
+    if (path === 'me/hosted-events' && method === 'GET') {
+      if (!authUser) return err('Autenticación requerida', 401);
+
+      const { data, error: hostedErr } = await db.from('events')
+        .select('event_key, title, start_at, status, cover_image_url')
+        .eq('owner_user_id', authUser.id)
+        .neq('status', 'DELETED')
+        .order('start_at', { ascending: true, nullsFirst: false });
+
+      if (hostedErr) return err(hostedErr.message, 500);
+      return json({ events: data || [] });
     }
 
     // POST /events/:eventKey/rsvps
@@ -257,7 +297,7 @@ Deno.serve(async (req) => {
     const adminGet = path.match(/^admin\/events\/([^/]+)$/);
     if (adminGet && method === 'GET') {
       const eventKey = adminGet[1];
-      const auth = await authorizeAdmin(db, eventKey, adminToken);
+      const auth = await authorizeAdmin(db, eventKey, adminToken, authUser?.id);
       if (!auth) return err('No autorizado', 401);
 
       const { data: event } = await db.from('events').select('*').eq('id', auth.eventId).single();
@@ -289,7 +329,7 @@ Deno.serve(async (req) => {
     // PUT /admin/events/:eventKey
     if (adminGet && method === 'PUT') {
       const eventKey = adminGet[1];
-      const auth = await authorizeAdmin(db, eventKey, adminToken);
+      const auth = await authorizeAdmin(db, eventKey, adminToken, authUser?.id);
       if (!auth) return err('No autorizado', 401);
 
       const body = await req.json();
@@ -318,7 +358,7 @@ Deno.serve(async (req) => {
     // DELETE /admin/events/:eventKey
     if (adminGet && method === 'DELETE') {
       const eventKey = adminGet[1];
-      const auth = await authorizeAdmin(db, eventKey, adminToken);
+      const auth = await authorizeAdmin(db, eventKey, adminToken, authUser?.id);
       if (!auth) return err('No autorizado', 401);
       if (auth.role !== 'HOST') return err('Solo el host puede eliminar el evento', 403);
 
@@ -334,7 +374,7 @@ Deno.serve(async (req) => {
     const adminUpdates = path.match(/^admin\/events\/([^/]+)\/updates$/);
     if (adminUpdates && method === 'POST') {
       const eventKey = adminUpdates[1];
-      const auth = await authorizeAdmin(db, eventKey, adminToken);
+      const auth = await authorizeAdmin(db, eventKey, adminToken, authUser?.id);
       if (!auth) return err('No autorizado', 401);
 
       const body = await req.json();
@@ -356,7 +396,7 @@ Deno.serve(async (req) => {
     const adminDeleteUpdate = path.match(/^admin\/events\/([^/]+)\/updates\/([^/]+)$/);
     if (adminDeleteUpdate && method === 'DELETE') {
       const [, eventKey, updateId] = adminDeleteUpdate;
-      const auth = await authorizeAdmin(db, eventKey, adminToken);
+      const auth = await authorizeAdmin(db, eventKey, adminToken, authUser?.id);
       if (!auth) return err('No autorizado', 401);
 
       await db.from('updates').update({ deleted_at: new Date().toISOString() }).eq('id', updateId);
@@ -367,7 +407,7 @@ Deno.serve(async (req) => {
     const adminApprove = path.match(/^admin\/events\/([^/]+)\/rsvps\/([^/]+)\/approve$/);
     if (adminApprove && method === 'POST') {
       const [, eventKey, rsvpId] = adminApprove;
-      const auth = await authorizeAdmin(db, eventKey, adminToken);
+      const auth = await authorizeAdmin(db, eventKey, adminToken, authUser?.id);
       if (!auth) return err('No autorizado', 401);
 
       const { data, error: uErr } = await db.from('rsvps').update({ approval_status: 'APPROVED' }).eq('id', rsvpId).select().single();
@@ -379,7 +419,7 @@ Deno.serve(async (req) => {
     const adminReject = path.match(/^admin\/events\/([^/]+)\/rsvps\/([^/]+)\/reject$/);
     if (adminReject && method === 'POST') {
       const [, eventKey, rsvpId] = adminReject;
-      const auth = await authorizeAdmin(db, eventKey, adminToken);
+      const auth = await authorizeAdmin(db, eventKey, adminToken, authUser?.id);
       if (!auth) return err('No autorizado', 401);
 
       const { data, error: uErr } = await db.from('rsvps').update({ approval_status: 'REJECTED' }).eq('id', rsvpId).select().single();
@@ -391,7 +431,7 @@ Deno.serve(async (req) => {
     const adminCohosts = path.match(/^admin\/events\/([^/]+)\/cohosts$/);
     if (adminCohosts && method === 'POST') {
       const [, eventKey] = adminCohosts;
-      const auth = await authorizeAdmin(db, eventKey, adminToken);
+      const auth = await authorizeAdmin(db, eventKey, adminToken, authUser?.id);
       if (!auth) return err('No autorizado', 401);
       if (auth.role !== 'HOST') return err('Solo el host puede gestionar co-hosts', 403);
 
@@ -412,7 +452,7 @@ Deno.serve(async (req) => {
     const adminDeleteCohost = path.match(/^admin\/events\/([^/]+)\/cohosts\/([^/]+)$/);
     if (adminDeleteCohost && method === 'DELETE') {
       const [, eventKey, tokenId] = adminDeleteCohost;
-      const auth = await authorizeAdmin(db, eventKey, adminToken);
+      const auth = await authorizeAdmin(db, eventKey, adminToken, authUser?.id);
       if (!auth) return err('No autorizado', 401);
       if (auth.role !== 'HOST') return err('Solo el host puede gestionar co-hosts', 403);
 

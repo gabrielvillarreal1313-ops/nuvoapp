@@ -81,9 +81,13 @@ const HostPanel = () => {
   };
 
   useEffect(() => {
-    if (eventKey && token) load();
-    else setError("Token de admin requerido");
-  }, [eventKey, token]);
+    if (!eventKey) {
+      setError("Evento inválido");
+      setLoading(false);
+      return;
+    }
+    load();
+  }, [eventKey, token, user?.id]);
 
   const handleApprove = async (rsvpId: string) => {
     try {
@@ -164,7 +168,7 @@ const HostPanel = () => {
   const handleDeleteEvent = async () => {
     if (!window.confirm("¿Eliminar este evento permanentemente? Esta acción no se puede deshacer.")) return;
     try {
-      await api.deleteEvent(eventKey!, token);
+      await api.deleteEvent(eventKey!, token || undefined);
       const hostEvents = JSON.parse(localStorage.getItem('hostEvents') || '[]');
       localStorage.setItem('hostEvents', JSON.stringify(hostEvents.filter((e: any) => e.eventKey !== eventKey)));
       if (user) {
