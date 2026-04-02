@@ -278,19 +278,11 @@ Deno.serve(async (req) => {
     if (path === 'me/hosted-events' && method === 'GET') {
       if (!authUser) return err('Autenticación requerida', 401);
 
-      // Get event_keys where user is host via user_events
-      const { data: ueRows, error: ueErr } = await db.from('user_events')
-        .select('event_key')
-        .eq('user_id', authUser.id)
-        .eq('role', 'host');
-      if (ueErr) return err(ueErr.message, 500);
-
-      const eventKeys = (ueRows || []).map((r: any) => r.event_key);
-      if (eventKeys.length === 0) return json({ events: [] });
-
+      // Source of truth: events.owner_user_id (legacy user_events intentionally not used here)
       const { data, error: hostedErr } = await db.from('events')
         .select('event_key, title, start_at, status, cover_image_url')
-        .in('event_key', eventKeys)
+        .eq('owner_user_id', authUser.id)
+        .is('deleted_at', null)
         .order('start_at', { ascending: true, nullsFirst: false });
 
       if (hostedErr) return err(hostedErr.message, 500);
@@ -301,23 +293,57 @@ Deno.serve(async (req) => {
     if (path === 'me/guest-events' && method === 'GET') {
       if (!authUser) return err('Autenticación requerida', 401);
 
-      // Get event_keys where user is guest via user_events
-      const { data: ueRows, error: ueErr } = await db.from('user_events')
-        .select('event_key')
+      // Source of truth: rsvps.user_id -> events.id (legacy user_events intentionally not used here)
+      const { data: rsvpRows, error: rsvpErr } = await db.from('rsvps')
+        .select('event_id, status, approval_status, created_at')
         .eq('user_id', authUser.id)
-        .eq('role', 'guest');
-      if (ueErr) return err(ueErr.message, 500);
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+      if (rsvpErr) return err(rsvpErr.message, 500);
 
-      const eventKeys = (ueRows || []).map((r: any) => r.event_key);
-      if (eventKeys.length === 0) return json({ events: [] });
+      const latestRsvpByEventId = new Map<string, { status: string; approval_status: string }>();
+      (rsvpRows || []).forEach((row: any) => {
+        if (!row.event_id || latestRsvpByEventId.has(row.event_id)) return;
+        latestRsvpByEventId.set(row.event_id, {
+          status: row.status,
+          approval_status: row.approval_status,
+        });
+      });
 
-      const { data, error: evErr } = await db.from('events')
-        .select('event_key, title, start_at, status, cover_image_url')
-        .in('event_key', eventKeys)
-        .order('start_at', { ascending: false });
+      const eventIds = Array.from(latestRsvpByEventId.keys());
+      if (eventIds.length === 0) return json({ events: [] });
+
+      const { data: events, error: evErr } = await db.from('events')
+        .select('id, event_key, title, start_at, status, cover_image_url')
+        .in('id', eventIds)
+        .is('deleted_at', null);
 
       if (evErr) return err(evErr.message, 500);
-      return json({ events: data || [] });
+
+      const guestEvents = (events || [])
+        .map((event: any) => {
+          const rsvp = latestRsvpByEventId.get(event.id);
+          if (!rsvp) return null;
+
+          return {
+            event_key: event.event_key,
+            title: event.title,
+            start_at: event.start_at,
+            status: event.status,
+            cover_image_url: event.cover_image_url,
+            my_rsvp_status: rsvp.status,
+            approval_status: rsvp.approval_status,
+          };
+        })
+        .filter(Boolean)
+        .sort((a: any, b: any) => {
+          if (!a.start_at && !b.start_at) return 0;
+          if (!a.start_at) return 1;
+          if (!b.start_at) return -1;
+          return new Date(b.start_at).getTime() - new Date(a.start_at).getTime();
+        });
+
+      return json({ events: guestEvents });
     }
 
     // POST /events/:eventKey/rsvps
