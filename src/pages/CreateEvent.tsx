@@ -11,6 +11,16 @@ import ImageUpload from "@/components/ImageUpload";
 import { toast } from "sonner";
 import EventCreatedModal from "@/components/EventCreatedModal";
 import TimeSelect from "@/components/TimeSelect";
+import { eventLocalDateTimeToUtcIso, resolveEventTimeZone } from "@/lib/timezone-utils";
+
+const TIMEZONE_OPTIONS = [
+  "America/Mexico_City",
+  "America/Tijuana",
+  "America/Bogota",
+  "America/Lima",
+  "America/Santiago",
+  "America/Argentina/Buenos_Aires",
+];
 
 const CreateEvent = () => {
   const navigate = useNavigate();
@@ -25,6 +35,7 @@ const CreateEvent = () => {
     startTime: "",
     endDate: "",
     endTime: "",
+    timezone: resolveEventTimeZone(),
     locationName: "",
     locationUrl: "",
     addressStreet: "",
@@ -49,9 +60,7 @@ const CreateEvent = () => {
   });
 
   const combineDateTime = (date: string, time: string): string | null => {
-    if (!date) return null;
-    const t = time || "12:00";
-    return new Date(`${date}T${t}`).toISOString();
+    return eventLocalDateTimeToUtcIso({ date, time, timeZone: form.timezone });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,6 +76,7 @@ const CreateEvent = () => {
         hostName: form.hostName,
         startAt: combineDateTime(form.startDate, form.startTime)!,
         endAt: combineDateTime(form.endDate, form.endTime),
+        timezone: form.timezone,
         locationName: form.locationName,
         locationUrl: form.locationUrl,
         addressStreet: form.addressStreet,
@@ -89,6 +99,7 @@ const CreateEvent = () => {
         title: result.event.title,
         hostUrl: `/h/${result.event.event_key}`,
         startAt: result.event.start_at,
+        timezone: result.event.timezone,
         role: "host",
       });
       localStorage.setItem('hostEvents', JSON.stringify(saved.slice(0, 20)));
@@ -149,6 +160,21 @@ const CreateEvent = () => {
               <Input type="date" value={form.endDate} onChange={(e) => set("endDate", e.target.value)} className="mt-1" />
               <TimeSelect value={form.endTime} onChange={(v) => set("endTime", v)} placeholder="Hora" />
             </div>
+          </div>
+
+          <div>
+            <Label>Zona horaria del evento *</Label>
+            <select
+              value={form.timezone}
+              onChange={(e) => set("timezone", e.target.value)}
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {TIMEZONE_OPTIONS.map((tz) => (
+                <option key={tz} value={tz}>
+                  {tz}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Dirección estructurada */}

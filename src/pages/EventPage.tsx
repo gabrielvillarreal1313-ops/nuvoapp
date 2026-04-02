@@ -131,7 +131,7 @@ const EventPage = () => {
           const saved = JSON.parse(localStorage.getItem("guestEvents") || "[]");
           const existing = saved.find((e: any) => e.eventKey === eventKey);
           if (!existing) {
-            saved.unshift({ eventKey, title: event.title, startAt: event.start_at, role: "guest" });
+            saved.unshift({ eventKey, title: event.title, startAt: event.start_at, timezone: event.timezone, role: "guest" });
             localStorage.setItem("guestEvents", JSON.stringify(saved.slice(0, 20)));
           }
         } catch {}
@@ -195,7 +195,7 @@ const EventPage = () => {
   const isRsvpClosed = !event.rsvp_open;
   const canRsvp = !isCancelled && !isRsvpClosed && (!myRsvp || editMode);
   const guestUrl = `${PUBLIC_BASE_URL}/e/${eventKey}`;
-  const shareText = getShareInviteText(event.title, event.start_at, guestUrl);
+  const shareText = getShareInviteText(event.title, event.start_at, guestUrl, event.timezone);
 
   const handleWhatsApp = () => {
     const waUrl = getWhatsAppShareUrl(shareText);
@@ -225,11 +225,11 @@ const EventPage = () => {
           <div className="mt-4 space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="h-4 w-4 text-primary" />
-              <span>{formatEventDate(event.start_at)}</span>
+              <span>{formatEventDate(event.start_at, event.timezone)}</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Clock className="h-4 w-4 text-primary" />
-              <span>{formatEventTime(event.start_at)}{event.end_at ? ` — ${formatEventTime(event.end_at)}` : ''}</span>
+              <span>{formatEventTime(event.start_at, event.timezone)}{event.end_at ? ` — ${formatEventTime(event.end_at, event.timezone)}` : ''}</span>
             </div>
             {(event.location_name || event.address_street) && (() => {
               const address = buildDisplayAddress(event);

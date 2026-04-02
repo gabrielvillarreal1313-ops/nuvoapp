@@ -30,7 +30,7 @@ const EventCreatedModal = ({ data }: Props) => {
     }
   };
 
-  const shareText = getShareInviteText(data.event.title, data.event.start_at, data.guestUrl);
+  const shareText = getShareInviteText(data.event.title, data.event.start_at, data.guestUrl, data.event.timezone);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
