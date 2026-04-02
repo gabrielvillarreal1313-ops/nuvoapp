@@ -123,6 +123,7 @@ const Home = () => {
   }, [user?.id]);
 
   const allEvents: SavedEvent[] = [...hostEvents, ...guestEvents];
+  const nowIso = new Date().toISOString();
 
   const eventDays = new Set<number>();
   allEvents.forEach((ev) => {
@@ -161,12 +162,22 @@ const Home = () => {
     : [];
 
   const upcomingEvents = allEvents
-    .filter(ev => ev.startAt && new Date(ev.startAt) >= new Date(today.toDateString()))
+    .filter((ev) => {
+      if (!ev.startAt) return false;
+      const eventDateKey = getEventLocalDateKey(ev.startAt, ev.timezone);
+      const todayInEventTz = getEventLocalDateKey(nowIso, ev.timezone);
+      return eventDateKey >= todayInEventTz;
+    })
     .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())
     .slice(0, 5);
 
   const pastEvents = allEvents
-    .filter(ev => !ev.startAt || new Date(ev.startAt) < new Date(today.toDateString()))
+    .filter((ev) => {
+      if (!ev.startAt) return true;
+      const eventDateKey = getEventLocalDateKey(ev.startAt, ev.timezone);
+      const todayInEventTz = getEventLocalDateKey(nowIso, ev.timezone);
+      return eventDateKey < todayInEventTz;
+    })
     .sort((a, b) => new Date(b.startAt!).getTime() - new Date(a.startAt!).getTime())
     .slice(0, 3);
 
