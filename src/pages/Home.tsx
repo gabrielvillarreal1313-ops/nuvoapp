@@ -5,12 +5,14 @@ import { useEffect, useState } from "react";
 import { formatEventDate, formatEventTime } from "@/lib/event-utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { getEventLocalDateKey } from "@/lib/timezone-utils";
 
 interface SavedEvent {
   eventKey: string;
   title: string;
   hostUrl?: string;
   startAt?: string;
+  timezone?: string;
   coverImageUrl?: string | null;
   status?: string;
   role: "host" | "guest";
@@ -73,6 +75,7 @@ const Home = () => {
           title: event.title,
           hostUrl: `/h/${event.event_key}`,
           startAt: event.start_at || undefined,
+          timezone: event.timezone,
           status: event.status,
           coverImageUrl: event.cover_image_url || null,
           role: "host" as const,
@@ -105,6 +108,7 @@ const Home = () => {
           eventKey: event.event_key,
           title: event.title,
           startAt: event.start_at || undefined,
+          timezone: event.timezone,
           status: event.status,
           coverImageUrl: event.cover_image_url || null,
           role: "guest" as const,
@@ -123,9 +127,9 @@ const Home = () => {
   const eventDays = new Set<number>();
   allEvents.forEach((ev) => {
     if (ev.startAt) {
-      const d = new Date(ev.startAt);
-      if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
-        eventDays.add(d.getDate());
+      const [year, month, day] = getEventLocalDateKey(ev.startAt, ev.timezone).split("-").map(Number);
+      if (year === calYear && month === calMonth + 1) {
+        eventDays.add(day);
       }
     }
   });
@@ -151,8 +155,8 @@ const Home = () => {
   const selectedDayEvents = selectedDay
     ? allEvents.filter(ev => {
         if (!ev.startAt) return false;
-        const d = new Date(ev.startAt);
-        return d.getFullYear() === calYear && d.getMonth() === calMonth && d.getDate() === selectedDay;
+        const [year, month, day] = getEventLocalDateKey(ev.startAt, ev.timezone).split("-").map(Number);
+        return year === calYear && month === calMonth + 1 && day === selectedDay;
       }).sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())
     : [];
 
@@ -244,7 +248,7 @@ const Home = () => {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm truncate">{ev.title}</p>
                       {ev.startAt && (
-                        <p className="text-xs text-muted-foreground">{formatEventTime(ev.startAt)}</p>
+                        <p className="text-xs text-muted-foreground">{formatEventTime(ev.startAt, ev.timezone)}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-1">
@@ -293,7 +297,7 @@ const Home = () => {
                     <p className="font-semibold text-sm truncate">{ev.title}</p>
                     {ev.startAt && (
                       <p className="text-xs text-muted-foreground">
-                        {formatEventDate(ev.startAt).split(",")[0]} · {formatEventTime(ev.startAt)}
+                        {formatEventDate(ev.startAt, ev.timezone).split(",")[0]} · {formatEventTime(ev.startAt, ev.timezone)}
                       </p>
                     )}
                   </div>
@@ -339,7 +343,7 @@ const Home = () => {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{ev.title}</p>
                     {ev.startAt && (
-                      <p className="text-xs text-muted-foreground">{formatEventDate(ev.startAt).split(",")[0]}</p>
+                      <p className="text-xs text-muted-foreground">{formatEventDate(ev.startAt, ev.timezone).split(",")[0]}</p>
                     )}
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />

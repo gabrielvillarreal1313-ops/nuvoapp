@@ -1,21 +1,37 @@
-import { format, parseISO } from "date-fns";
-import { es } from "date-fns/locale";
+import { resolveEventTimeZone } from "./timezone-utils";
 
 export const PUBLIC_BASE_URL = import.meta.env.VITE_PUBLIC_URL || "https://nuvoapp.lovable.app";
 
 export function formatEventDate(dateStr: string, timezone?: string): string {
-  const date = parseISO(dateStr);
-  return format(date, "EEEE d 'de' MMMM, yyyy", { locale: es });
+  const timeZone = resolveEventTimeZone(timezone);
+  return new Intl.DateTimeFormat("es-MX", {
+    timeZone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(dateStr));
 }
 
-export function formatEventTime(dateStr: string): string {
-  const date = parseISO(dateStr);
-  return format(date, "h:mm a", { locale: es });
+export function formatEventTime(dateStr: string, timezone?: string): string {
+  const timeZone = resolveEventTimeZone(timezone);
+  return new Intl.DateTimeFormat("es-MX", {
+    timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(dateStr));
 }
 
-export function formatEventDateTime(dateStr: string): string {
-  const date = parseISO(dateStr);
-  return format(date, "EEE d MMM · h:mm a", { locale: es });
+export function formatEventDateTime(dateStr: string, timezone?: string): string {
+  const timeZone = resolveEventTimeZone(timezone);
+  const dateText = new Intl.DateTimeFormat("es-MX", {
+    timeZone,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(dateStr));
+  const timeText = formatEventTime(dateStr, timeZone);
+  return `${dateText} · ${timeText}`;
 }
 
 export function generateRandomKey(length = 12): string {
@@ -33,8 +49,8 @@ export function getWhatsAppShareUrl(text: string): string {
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
 
-export function getShareInviteText(title: string, dateStr: string, guestUrl: string): string {
-  const dateFormatted = formatEventDateTime(dateStr);
+export function getShareInviteText(title: string, dateStr: string, guestUrl: string, timezone?: string): string {
+  const dateFormatted = formatEventDateTime(dateStr, timezone);
   return `${title} — ${dateFormatted}. RSVP aquí: ${guestUrl}`;
 }
 

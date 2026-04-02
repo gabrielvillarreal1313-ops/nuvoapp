@@ -13,6 +13,16 @@ import ImageUpload from "@/components/ImageUpload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, Check, X, Copy, MessageCircle, Plus, Trash2, Users, Bell, Settings, UserPlus, AlertTriangle, PartyPopper } from "lucide-react";
 import { toast } from "sonner";
+import { eventLocalDateTimeToUtcIso, resolveEventTimeZone, utcIsoToEventLocalParts } from "@/lib/timezone-utils";
+
+const TIMEZONE_OPTIONS = [
+  "America/Mexico_City",
+  "America/Tijuana",
+  "America/Bogota",
+  "America/Lima",
+  "America/Santiago",
+  "America/Argentina/Buenos_Aires",
+];
 
 const HostPanel = () => {
   const { eventKey } = useParams<{ eventKey: string }>();
@@ -40,22 +50,18 @@ const HostPanel = () => {
     try {
       const data = await api.getAdminEvent(eventKey!, token);
       setEvent(data);
-      const startDt = data.start_at ? new Date(data.start_at) : null;
-      const endDt = data.end_at ? new Date(data.end_at) : null;
-      const toDateStr = (d: Date) => d.toLocaleDateString('en-CA');
-      const toTimeStr = (d: Date) => {
-        const h = d.getHours();
-        const m = d.getMinutes() < 30 ? 0 : 30;
-        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      };
+      const eventTimezone = resolveEventTimeZone(data.timezone);
+      const startDt = data.start_at ? utcIsoToEventLocalParts(data.start_at, eventTimezone) : null;
+      const endDt = data.end_at ? utcIsoToEventLocalParts(data.end_at, eventTimezone) : null;
       setEditForm({
         title: data.title,
         description: data.description || "",
         hostName: data.host_name || "",
-        startDate: startDt ? toDateStr(startDt) : "",
-        startTime: startDt ? toTimeStr(startDt) : "",
-        endDate: endDt ? toDateStr(endDt) : "",
-        endTime: endDt ? toTimeStr(endDt) : "",
+        startDate: startDt ? startDt.date : "",
+        startTime: startDt ? startDt.time : "",
+        endDate: endDt ? endDt.date : "",
+        endTime: endDt ? endDt.time : "",
+        timezone: eventTimezone,
         locationName: data.location_name || "",
         locationUrl: data.location_url || "",
         addressStreet: data.address_street || "",
@@ -127,15 +133,13 @@ const HostPanel = () => {
   const handleSaveEvent = async () => {
     setSaving(true);
     try {
-      const combineDateTime = (date: string, time: string): string | null => {
-        if (!date) return null;
-        const t = time || "12:00";
-        return new Date(`${date}T${t}`).toISOString();
-      };
+      const combineDateTime = (date: string, time: string): string | null =>
+        eventLocalDateTimeToUtcIso({ date, time, timeZone: editForm.timezone });
       await api.updateEvent(eventKey!, token, {
         ...editForm,
         startAt: combineDateTime(editForm.startDate, editForm.startTime) || undefined,
         endAt: combineDateTime(editForm.endDate, editForm.endTime),
+        timezone: editForm.timezone,
       });
       toast.success("Evento actualizado");
       load();
@@ -193,7 +197,7 @@ const HostPanel = () => {
   if (!event) return null;
 
   const guestUrl = `${PUBLIC_BASE_URL}/e/${eventKey}`;
-  const shareText = getShareInviteText(event.title, event.start_at, guestUrl);
+  const shareText = getShareInviteText(event.title, event.start_at, guestUrl, event.timezone);
 
   const pendingRsvps = (event.rsvps || []).filter((r: any) => r.approval_status === 'PENDING');
   const approvedRsvps = (event.rsvps || []).filter((r: any) => r.approval_status === 'APPROVED');
@@ -214,7 +218,7 @@ const HostPanel = () => {
         <div className="mb-4">
           <h1 className="font-display text-2xl font-bold">{event.title}</h1>
           <p className="text-sm text-muted-foreground">
-            {formatEventDate(event.start_at)} · {formatEventTime(event.start_at)}
+            {formatEventDate(event.start_at, event.timezone)} · {formatEventTime(event.start_at, event.timezone)}
           </p>
         </div>
 
@@ -396,6 +400,20 @@ const HostPanel = () => {
                     <Input type="date" value={editForm.endDate} onChange={(e) => setEditForm((f: any) => ({ ...f, endDate: e.target.value }))} className="mt-1" />
                     <TimeSelect value={editForm.endTime} onChange={(v) => setEditForm((f: any) => ({ ...f, endTime: v }))} placeholder="Hora" />
                   </div>
+                </div>
+                <div>
+                  <Label>Zona horaria del evento</Label>
+                  <select
+                    value={editForm.timezone}
+                    onChange={(e) => setEditForm((f: any) => ({ ...f, timezone: e.target.value }))}
+                    className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    {TIMEZONE_OPTIONS.map((tz) => (
+                      <option key={tz} value={tz}>
+                        {tz}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-3 rounded-xl border bg-card p-4">
                   <p className="font-display text-sm font-semibold">Ubicación</p>
