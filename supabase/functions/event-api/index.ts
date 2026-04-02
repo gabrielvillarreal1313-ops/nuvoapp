@@ -39,6 +39,13 @@ function getBaseUrl(_req: Request): string {
   return Deno.env.get('PUBLIC_APP_URL') || 'https://nuvoapp.lovable.app';
 }
 
+function mapRsvpResponse(rsvp: any) {
+  return {
+    ...rsvp,
+    editToken: rsvp.edit_token,
+  };
+}
+
 async function getAuthUser(db: any, req: Request): Promise<AuthUser | null> {
   const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
   if (!authHeader.toLowerCase().startsWith('bearer ')) return null;
@@ -201,11 +208,25 @@ Deno.serve(async (req) => {
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
+      let myRsvp: any = null;
+      if (authUser) {
+        const { data: ownRsvp } = await db.from('rsvps')
+          .select('*')
+          .eq('event_id', event.id)
+          .eq('user_id', authUser.id)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        myRsvp = ownRsvp ? mapRsvpResponse(ownRsvp) : null;
+      }
+
       return json({
         ...event,
         rsvps: event.show_attendees ? rsvpsWithAvatars : [],
         counts,
         updates: updates || [],
+        my_rsvp: myRsvp,
       });
     }
 
@@ -221,6 +242,37 @@ Deno.serve(async (req) => {
 
       if (hostedErr) return err(hostedErr.message, 500);
       return json({ events: data || [] });
+    }
+
+    // GET /me/guest-events
+    if (path === 'me/guest-events' && method === 'GET') {
+      if (!authUser) return err('Autenticación requerida', 401);
+
+      const { data, error: guestErr } = await db.from('rsvps')
+        .select('event_id, status, approval_status, created_at, events!inner(event_key, title, start_at, status, cover_image_url, deleted_at)')
+        .eq('user_id', authUser.id)
+        .is('deleted_at', null)
+        .is('events.deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (guestErr) return err(guestErr.message, 500);
+
+      const deduped = new Map<string, any>();
+      for (const row of data || []) {
+        const event = row.events;
+        if (!event?.event_key || deduped.has(event.event_key)) continue;
+        deduped.set(event.event_key, {
+          event_key: event.event_key,
+          title: event.title,
+          start_at: event.start_at,
+          status: event.status,
+          cover_image_url: event.cover_image_url,
+          my_rsvp_status: row.status,
+          approval_status: row.approval_status,
+        });
+      }
+
+      return json({ events: Array.from(deduped.values()) });
     }
 
     // POST /events/:eventKey/rsvps
@@ -246,21 +298,110 @@ Deno.serve(async (req) => {
       const comment = body.comment ? body.comment.substring(0, 240) : null;
       const editToken = genToken();
       const approvalStatus = event.privacy_mode === 'APPROVAL_REQUIRED' ? 'PENDING' : 'APPROVED';
-
-      const { data: rsvp, error: rErr } = await db.from('rsvps').insert({
-        event_id: event.id,
+      const basePayload = {
         name: body.name.trim(),
         phone: body.phone.trim(),
         status: body.status,
         party_size: partySize,
         comment,
+      };
+
+      if (authUser) {
+        const { data: existing } = await db.from('rsvps')
+          .select('*')
+          .eq('event_id', event.id)
+          .eq('user_id', authUser.id)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existing) {
+          const updates: any = {
+            ...basePayload,
+          };
+          if (existing.approval_status === 'REJECTED') {
+            updates.approval_status = approvalStatus;
+          }
+
+          const { data: updated, error: updateErr } = await db.from('rsvps')
+            .update(updates)
+            .eq('id', existing.id)
+            .select()
+            .single();
+          if (updateErr) return err(updateErr.message, 500);
+          return json(mapRsvpResponse(updated));
+        }
+      }
+
+      const { data: rsvp, error: rErr } = await db.from('rsvps').insert({
+        event_id: event.id,
+        ...basePayload,
         approval_status: approvalStatus,
         edit_token: editToken,
         device_id: body.deviceId || null,
+        user_id: authUser?.id || null,
       }).select().single();
 
-      if (rErr) return err(rErr.message, 500);
-      return json({ ...rsvp, editToken });
+      if (rErr) {
+        if (authUser && /idx_rsvps_event_user_unique_active/i.test(rErr.message || '')) {
+          const { data: fallback } = await db.from('rsvps')
+            .select('*')
+            .eq('event_id', event.id)
+            .eq('user_id', authUser.id)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (fallback) return json(mapRsvpResponse(fallback));
+        }
+        return err(rErr.message, 500);
+      }
+      return json(mapRsvpResponse(rsvp));
+    }
+
+    // POST /events/:eventKey/rsvps/claim
+    const rsvpClaim = path.match(/^events\/([^/]+)\/rsvps\/claim$/);
+    if (rsvpClaim && method === 'POST') {
+      if (!authUser) return err('Autenticación requerida', 401);
+
+      const eventKey = rsvpClaim[1];
+      const { data: event } = await db
+        .from('events')
+        .select('id')
+        .eq('event_key', eventKey)
+        .is('deleted_at', null)
+        .single();
+      if (!event) return err('Evento no encontrado', 404);
+
+      const body = await req.json().catch(() => ({}));
+      const tokenFromBody = typeof body.editToken === 'string' ? body.editToken : '';
+      const et = tokenFromBody || url.searchParams.get('et') || req.headers.get('x-edit-token');
+      if (!et) return err('Token de edición requerido', 400);
+
+      const { data: rsvp } = await db.from('rsvps')
+        .select('*')
+        .eq('event_id', event.id)
+        .eq('edit_token', et)
+        .is('deleted_at', null)
+        .single();
+      if (!rsvp) return err('RSVP no encontrado', 404);
+
+      if (rsvp.user_id && rsvp.user_id !== authUser.id) return err('RSVP ya vinculada a otro usuario', 409);
+
+      if (rsvp.user_id === authUser.id) {
+        return json({ claimed: false, rsvp: mapRsvpResponse(rsvp) });
+      }
+
+      const { data: updated, error: claimErr } = await db.from('rsvps')
+        .update({ user_id: authUser.id })
+        .eq('id', rsvp.id)
+        .is('deleted_at', null)
+        .select()
+        .single();
+      if (claimErr) return err(claimErr.message, 500);
+
+      return json({ claimed: true, rsvp: mapRsvpResponse(updated) });
     }
 
     // PUT /events/:eventKey/rsvps/:rsvpId
