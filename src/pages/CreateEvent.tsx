@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Loader2, PartyPopper } from "lucide-react";
+import { ArrowLeft, CalendarClock, Loader2, MapPin, PartyPopper, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import ImageUpload from "@/components/ImageUpload";
 import { toast } from "sonner";
@@ -52,12 +52,13 @@ const CreateEvent = () => {
     rsvpOpen: true,
   });
 
-  const set = (key: string, val: any) => setForm((f) => {
-    const updated = { ...f, [key]: val };
-    if (key === "startDate" && !f.endDate) updated.endDate = val;
-    if (key === "startTime" && !f.endTime) updated.endTime = val;
-    return updated;
-  });
+  const set = (key: string, val: any) =>
+    setForm((f) => {
+      const updated = { ...f, [key]: val };
+      if (key === "startDate" && !f.endDate) updated.endDate = val;
+      if (key === "startTime" && !f.endTime) updated.endTime = val;
+      return updated;
+    });
 
   const combineDateTime = (date: string, time: string): string | null => {
     return eventLocalDateTimeToUtcIso({ date, time, timeZone: form.timezone });
@@ -65,8 +66,14 @@ const CreateEvent = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) { toast.error("El título es requerido"); return; }
-    if (!form.startDate) { toast.error("La fecha de inicio es requerida"); return; }
+    if (!form.title.trim()) {
+      toast.error("El título es requerido");
+      return;
+    }
+    if (!form.startDate) {
+      toast.error("La fecha de inicio es requerida");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -93,7 +100,7 @@ const CreateEvent = () => {
         rsvpOpen: form.rsvpOpen,
       });
 
-      const saved = JSON.parse(localStorage.getItem('hostEvents') || '[]');
+      const saved = JSON.parse(localStorage.getItem("hostEvents") || "[]");
       saved.unshift({
         eventKey: result.event.event_key,
         title: result.event.title,
@@ -102,7 +109,7 @@ const CreateEvent = () => {
         timezone: result.event.timezone,
         role: "host",
       });
-      localStorage.setItem('hostEvents', JSON.stringify(saved.slice(0, 20)));
+      localStorage.setItem("hostEvents", JSON.stringify(saved.slice(0, 20)));
 
       setCreatedData(result);
     } catch (err: any) {
@@ -123,63 +130,88 @@ const CreateEvent = () => {
           <ArrowLeft className="h-4 w-4" /> Volver
         </button>
 
-        <div className="mb-6 flex items-center gap-3">
-          <div className="gradient-primary flex h-10 w-10 items-center justify-center rounded-xl">
-            <PartyPopper className="h-5 w-5 text-primary-foreground" />
+        <div className="rounded-2xl border bg-card p-5 shadow-card">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="gradient-primary flex h-11 w-11 items-center justify-center rounded-xl">
+              <PartyPopper className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="font-display text-2xl font-bold tracking-tight">Crear invitación</h1>
+              <p className="text-sm text-muted-foreground">Diseña un evento que den ganas de abrir y responder.</p>
+            </div>
           </div>
-          <h1 className="font-display text-2xl font-bold">Crear evento</h1>
+          <div className="rounded-xl bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            El corazón del evento: <span className="font-semibold text-foreground">título, fecha/hora, lugar y portada</span>.
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <Label htmlFor="title">Nombre del evento *</Label>
-            <Input id="title" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Fiesta de cumpleaños 🎂" className="mt-1" />
-          </div>
-
-          <div>
-            <Label htmlFor="description">Descripción</Label>
-            <Textarea id="description" value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Detalles del evento..." className="mt-1" rows={3} />
-          </div>
-
-          <div>
-            <Label htmlFor="hostName">Tu nombre (host)</Label>
-            <Input id="hostName" value={form.hostName} onChange={(e) => set("hostName", e.target.value)} placeholder="Juan" className="mt-1" />
-          </div>
-
-          <div>
-            <Label>Inicio *</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Input type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} className="mt-1" />
-              <TimeSelect value={form.startTime} onChange={(v) => set("startTime", v)} placeholder="Hora" />
+        <form onSubmit={handleSubmit} className="mt-5 space-y-5">
+          <section className="space-y-4 rounded-2xl border bg-card p-4 shadow-card">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <p className="font-display text-base font-semibold">Identidad del evento</p>
             </div>
-          </div>
 
-          <div>
-            <Label>Fin</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Input type="date" value={form.endDate} onChange={(e) => set("endDate", e.target.value)} className="mt-1" />
-              <TimeSelect value={form.endTime} onChange={(v) => set("endTime", v)} placeholder="Hora" />
+            <div>
+              <Label htmlFor="title">Nombre del evento *</Label>
+              <Input id="title" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Sunset rooftop con amigos ✨" className="mt-1" />
             </div>
-          </div>
 
-          <div>
-            <Label>Zona horaria del evento *</Label>
-            <select
-              value={form.timezone}
-              onChange={(e) => set("timezone", e.target.value)}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              {TIMEZONE_OPTIONS.map((tz) => (
-                <option key={tz} value={tz}>
-                  {tz}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div>
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea id="description" value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Qué va a pasar, dress code, algo especial..." className="mt-1" rows={3} />
+            </div>
 
-          {/* Dirección estructurada */}
-          <div className="space-y-3 rounded-xl border bg-card p-4 shadow-card">
-            <p className="font-display text-sm font-semibold">Ubicación</p>
+            <div>
+              <Label>Imagen de portada</Label>
+              <ImageUpload value={form.coverImageUrl} onChange={(url) => set("coverImageUrl", url)} />
+            </div>
+          </section>
+
+          <section className="space-y-4 rounded-2xl border bg-card p-4 shadow-card">
+            <div className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-primary" />
+              <p className="font-display text-base font-semibold">Cuándo sucede</p>
+            </div>
+
+            <div>
+              <Label>Inicio *</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} className="mt-1" />
+                <TimeSelect value={form.startTime} onChange={(v) => set("startTime", v)} placeholder="Hora" />
+              </div>
+            </div>
+
+            <div>
+              <Label>Fin</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input type="date" value={form.endDate} onChange={(e) => set("endDate", e.target.value)} className="mt-1" />
+                <TimeSelect value={form.endTime} onChange={(v) => set("endTime", v)} placeholder="Hora" />
+              </div>
+            </div>
+
+            <div>
+              <Label>Zona horaria del evento *</Label>
+              <select
+                value={form.timezone}
+                onChange={(e) => set("timezone", e.target.value)}
+                className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                {TIMEZONE_OPTIONS.map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </section>
+
+          <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-card">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <p className="font-display text-base font-semibold">Dónde se arma</p>
+            </div>
+
             <div>
               <Label>Nombre del lugar (opcional)</Label>
               <Input value={form.locationName} onChange={(e) => set("locationName", e.target.value)} placeholder="Casa de Ana, Terraza Roma..." className="mt-1" />
@@ -227,22 +259,17 @@ const CreateEvent = () => {
             <div>
               <Label>Link personalizado (opcional)</Label>
               <Input value={form.locationUrl} onChange={(e) => set("locationUrl", e.target.value)} placeholder="https://maps.google.com/..." className="mt-1" />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Si no lo pones, se generará automáticamente con Google Maps
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Si no lo pones, se generará automáticamente con Google Maps.</p>
             </div>
-          </div>
+          </section>
 
-          <div>
-            <Label>Imagen de portada</Label>
-            <ImageUpload value={form.coverImageUrl} onChange={(url) => set("coverImageUrl", url)} />
-          </div>
+          <section className="space-y-4 rounded-2xl border bg-card p-4 shadow-card">
+            <p className="font-display text-base font-semibold">Privacidad y RSVP</p>
 
-          <div className="space-y-4 rounded-xl border bg-card p-4 shadow-card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Requiere aprobación</p>
-                <p className="text-xs text-muted-foreground">Los RSVPs necesitan tu aprobación</p>
+                <p className="text-xs text-muted-foreground">Los RSVPs necesitan tu aprobación antes de aparecer como confirmados.</p>
               </div>
               <Switch checked={form.privacyMode === "APPROVAL_REQUIRED"} onCheckedChange={(v) => set("privacyMode", v ? "APPROVAL_REQUIRED" : "OPEN")} />
             </div>
@@ -250,16 +277,18 @@ const CreateEvent = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Mostrar asistentes</p>
-                <p className="text-xs text-muted-foreground">Los invitados ven quién va</p>
+                <p className="text-xs text-muted-foreground">Los invitados pueden ver quién va para darle vibra social.</p>
               </div>
               <Switch checked={form.showAttendees} onCheckedChange={(v) => set("showAttendees", v)} />
             </div>
-          </div>
+          </section>
 
-          <Button type="submit" disabled={loading} className="gradient-primary w-full py-6 text-lg font-semibold text-primary-foreground shadow-elevated hover:opacity-90">
-            {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-            {loading ? "Creando..." : "Crear evento"}
-          </Button>
+          <div className="pb-2">
+            <Button type="submit" disabled={loading} className="gradient-primary w-full py-6 text-lg font-semibold text-primary-foreground shadow-elevated hover:opacity-90">
+              {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+              {loading ? "Creando..." : "Crear y compartir"}
+            </Button>
+          </div>
         </form>
       </div>
     </div>
