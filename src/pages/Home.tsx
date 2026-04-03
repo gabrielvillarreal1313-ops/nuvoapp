@@ -5,29 +5,16 @@ import { useEffect, useState } from "react";
 import { formatEventDate, formatEventTime } from "@/lib/event-utils";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { getEventLocalDateKey } from "@/lib/timezone-utils";
-
-interface SavedEvent {
-  eventKey: string;
-  title: string;
-  hostUrl?: string;
-  startAt?: string;
-  timezone?: string;
-  coverImageUrl?: string | null;
-  status?: string;
-  role: "host" | "guest";
-}
-
-function mergeGuestEvents(backendEvents: SavedEvent[], legacyEvents: SavedEvent[]): SavedEvent[] {
-  const byEventKey = new Map<string, SavedEvent>();
-  backendEvents.forEach((event) => byEventKey.set(event.eventKey, event));
-  legacyEvents.forEach((event) => {
-    if (!byEventKey.has(event.eventKey)) {
-      byEventKey.set(event.eventKey, event);
-    }
-  });
-  return Array.from(byEventKey.values());
-}
+import {
+  SavedEvent,
+  getEventDaysForMonth,
+  getPastEvents,
+  getSelectedDayEvents,
+  getUpcomingEvents,
+  mapGuestEvents,
+  mapHostedEvents,
+  mergeGuestEvents,
+} from "@/lib/home-events-utils";
 
 const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const DAYS_ES = ["Lu","Ma","Mi","Ju","Vi","Sá","Do"];
@@ -70,16 +57,7 @@ const Home = () => {
 
       try {
         const response = await api.getMyHostedEvents();
-        const backendEvents: SavedEvent[] = (response.events || []).map((event: any) => ({
-          eventKey: event.event_key,
-          title: event.title,
-          hostUrl: `/h/${event.event_key}`,
-          startAt: event.start_at || undefined,
-          timezone: event.timezone,
-          status: event.status,
-          coverImageUrl: event.cover_image_url || null,
-          role: "host" as const,
-        }));
+        const backendEvents = mapHostedEvents(response.events || []);
         setHostEvents(backendEvents);
       } catch {
         setHostEvents(legacyHostEvents);
@@ -104,15 +82,7 @@ const Home = () => {
 
       try {
         const response = await api.getMyGuestEvents();
-        const backendGuestEvents: SavedEvent[] = (response.events || []).map((event: any) => ({
-          eventKey: event.event_key,
-          title: event.title,
-          startAt: event.start_at || undefined,
-          timezone: event.timezone,
-          status: event.status,
-          coverImageUrl: event.cover_image_url || null,
-          role: "guest" as const,
-        }));
+        const backendGuestEvents = mapGuestEvents(response.events || []);
         setGuestEvents(mergeGuestEvents(backendGuestEvents, legacyGuestEvents));
       } catch {
         setGuestEvents(legacyGuestEvents);
@@ -125,15 +95,7 @@ const Home = () => {
   const allEvents: SavedEvent[] = [...hostEvents, ...guestEvents];
   const nowIso = new Date().toISOString();
 
-  const eventDays = new Set<number>();
-  allEvents.forEach((ev) => {
-    if (ev.startAt) {
-      const [year, month, day] = getEventLocalDateKey(ev.startAt, ev.timezone).split("-").map(Number);
-      if (year === calYear && month === calMonth + 1) {
-        eventDays.add(day);
-      }
-    }
-  });
+  const eventDays = getEventDaysForMonth(allEvents, calYear, calMonth);
 
   const daysInMonth = getDaysInMonth(calYear, calMonth);
   const firstDay = getFirstDayOfWeek(calYear, calMonth);
@@ -153,33 +115,11 @@ const Home = () => {
     else setCalMonth(m => m + 1);
   };
 
-  const selectedDayEvents = selectedDay
-    ? allEvents.filter(ev => {
-        if (!ev.startAt) return false;
-        const [year, month, day] = getEventLocalDateKey(ev.startAt, ev.timezone).split("-").map(Number);
-        return year === calYear && month === calMonth + 1 && day === selectedDay;
-      }).sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())
-    : [];
+  const selectedDayEvents = getSelectedDayEvents(allEvents, calYear, calMonth, selectedDay);
 
-  const upcomingEvents = allEvents
-    .filter((ev) => {
-      if (!ev.startAt) return false;
-      const eventDateKey = getEventLocalDateKey(ev.startAt, ev.timezone);
-      const todayInEventTz = getEventLocalDateKey(nowIso, ev.timezone);
-      return eventDateKey >= todayInEventTz;
-    })
-    .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())
-    .slice(0, 5);
+  const upcomingEvents = getUpcomingEvents(allEvents, nowIso, 5);
 
-  const pastEvents = allEvents
-    .filter((ev) => {
-      if (!ev.startAt) return true;
-      const eventDateKey = getEventLocalDateKey(ev.startAt, ev.timezone);
-      const todayInEventTz = getEventLocalDateKey(nowIso, ev.timezone);
-      return eventDateKey < todayInEventTz;
-    })
-    .sort((a, b) => new Date(b.startAt!).getTime() - new Date(a.startAt!).getTime())
-    .slice(0, 3);
+  const pastEvents = getPastEvents(allEvents, nowIso, 3);
 
   return (
     <div className="min-h-screen bg-background pb-24">
