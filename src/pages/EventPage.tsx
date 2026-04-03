@@ -2,12 +2,33 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
-import { formatEventDate, formatEventTime, getWhatsAppShareUrl, getShareInviteText, getShareUpdateText, copyToClipboard, PUBLIC_BASE_URL } from "@/lib/event-utils";
+import {
+  formatEventDate,
+  formatEventTime,
+  getWhatsAppShareUrl,
+  getShareInviteText,
+  getShareUpdateText,
+  copyToClipboard,
+  PUBLIC_BASE_URL,
+} from "@/lib/event-utils";
 import { buildDisplayAddress, buildGoogleMapsUrl } from "@/lib/address-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, MapPin, ExternalLink, MessageCircle, Users, Copy, Loader2, AlertTriangle } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  ExternalLink,
+  MessageCircle,
+  Users,
+  Copy,
+  Loader2,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Hourglass,
+} from "lucide-react";
 import { toast } from "sonner";
 import PhoneInput from "@/components/PhoneInput";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -48,7 +69,7 @@ const EventPage = () => {
       const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
       if (profile.name) {
         const parts = profile.name.trim().split(/\s+/);
-        setRsvpForm(f => ({ ...f, firstName: parts[0] || "", lastName: parts.slice(1).join(" ") || "", phone: profile.phone || "" }));
+        setRsvpForm((f) => ({ ...f, firstName: parts[0] || "", lastName: parts.slice(1).join(" ") || "", phone: profile.phone || "" }));
       }
     } catch {}
   }, []);
@@ -111,8 +132,14 @@ const EventPage = () => {
 
   const handleRsvp = async () => {
     const fullName = `${rsvpForm.firstName.trim()} ${rsvpForm.lastName.trim()}`.trim();
-    if (!fullName || !rsvpForm.firstName.trim() || !rsvpForm.lastName.trim()) { toast.error("Nombre y apellido son requeridos"); return; }
-    if (!rsvpForm.phone.trim()) { toast.error("Tu número de WhatsApp es requerido"); return; }
+    if (!fullName || !rsvpForm.firstName.trim() || !rsvpForm.lastName.trim()) {
+      toast.error("Nombre y apellido son requeridos");
+      return;
+    }
+    if (!rsvpForm.phone.trim()) {
+      toast.error("Tu número de WhatsApp es requerido");
+      return;
+    }
     setSubmitting(true);
     const submitData = { name: fullName, phone: rsvpForm.phone, status: rsvpForm.status, partySize: rsvpForm.partySize, comment: rsvpForm.comment };
     try {
@@ -122,9 +149,9 @@ const EventPage = () => {
         toast.success("RSVP actualizado");
       } else {
         const result = await api.createRsvp(eventKey!, submitData);
-        const tokens = JSON.parse(localStorage.getItem('rsvpTokens') || '{}');
+        const tokens = JSON.parse(localStorage.getItem("rsvpTokens") || "{}");
         tokens[eventKey!] = result.editToken || result.edit_token;
-        localStorage.setItem('rsvpTokens', JSON.stringify(tokens));
+        localStorage.setItem("rsvpTokens", JSON.stringify(tokens));
         setMyRsvp(result);
 
         try {
@@ -143,7 +170,7 @@ const EventPage = () => {
           }
         } catch {}
 
-        if (result.approval_status === 'PENDING') {
+        if (result.approval_status === "PENDING") {
           toast.success("RSVP enviado — pendiente de aprobación");
         } else {
           toast.success("¡Listo! Te esperamos 🎉");
@@ -160,12 +187,12 @@ const EventPage = () => {
 
   const handleDeleteRsvp = async () => {
     if (!myRsvp) return;
-    const tokens = JSON.parse(localStorage.getItem('rsvpTokens') || '{}');
+    const tokens = JSON.parse(localStorage.getItem("rsvpTokens") || "{}");
     const et = tokens[eventKey!] || myRsvp.editToken;
     try {
       await api.deleteRsvp(eventKey!, myRsvp.id, et);
       delete tokens[eventKey!];
-      localStorage.setItem('rsvpTokens', JSON.stringify(tokens));
+      localStorage.setItem("rsvpTokens", JSON.stringify(tokens));
       setMyRsvp(null);
       setEditMode(false);
       setRsvpForm({ firstName: "", lastName: "", phone: "", status: "GOING", partySize: 1, comment: "" });
@@ -176,22 +203,24 @@ const EventPage = () => {
     }
   };
 
-  if (loading) return (
-    <div className="flex min-h-screen items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
 
-  if (error) return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
-      <AlertTriangle className="mb-4 h-12 w-12 text-destructive" />
-      <p className="text-lg font-medium">{error}</p>
-    </div>
-  );
+  if (error)
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center px-4">
+        <AlertTriangle className="mb-4 h-12 w-12 text-destructive" />
+        <p className="text-lg font-medium">{error}</p>
+      </div>
+    );
 
   if (!event) return null;
 
-  const isCancelled = event.status === 'CANCELLED';
+  const isCancelled = event.status === "CANCELLED";
   const isRsvpClosed = !event.rsvp_open;
   const canRsvp = !isCancelled && !isRsvpClosed && (!myRsvp || editMode);
   const guestUrl = `${PUBLIC_BASE_URL}/e/${eventKey}`;
@@ -199,43 +228,68 @@ const EventPage = () => {
 
   const handleWhatsApp = () => {
     const waUrl = getWhatsAppShareUrl(shareText);
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
+    window.open(waUrl, "_blank", "noopener,noreferrer");
   };
 
+  const statusCards = [
+    { show: isCancelled, label: "Evento cancelado", icon: AlertTriangle, tone: "bg-destructive/10 text-destructive border-destructive/20" },
+    { show: !isCancelled && isRsvpClosed, label: "RSVP cerrado", icon: XCircle, tone: "bg-muted text-muted-foreground border-muted" },
+    { show: !!myRsvp && myRsvp.approval_status === "PENDING", label: "Tu RSVP está pendiente de aprobación", icon: Hourglass, tone: "bg-pending/15 text-foreground border-pending/40" },
+    { show: !!myRsvp && myRsvp.approval_status === "APPROVED", label: "Tu RSVP fue aprobado", icon: CheckCircle2, tone: "bg-going/10 text-foreground border-going/30" },
+    { show: !!myRsvp && myRsvp.approval_status === "REJECTED", label: "Tu RSVP fue rechazado", icon: XCircle, tone: "bg-no/10 text-foreground border-no/30" },
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
-      {event.cover_image_url && (
-        <div className="relative h-48 w-full overflow-hidden">
-          <img src={event.cover_image_url} alt="" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+    <div className="min-h-screen bg-background pb-6">
+      {event.cover_image_url ? (
+        <div className="relative h-64 w-full overflow-hidden">
+          <img src={event.cover_image_url} alt="Portada del evento" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/35 to-transparent" />
+          <div className="absolute bottom-4 right-4">
+            <Button
+              onClick={handleWhatsApp}
+              className="bg-[hsl(142,70%,40%)] text-primary-foreground hover:bg-[hsl(142,70%,35%)]"
+              size="sm"
+            >
+              <MessageCircle className="mr-1 h-4 w-4" /> Compartir
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="gradient-primary px-4 pb-5 pt-8 text-primary-foreground">
+          <div className="mx-auto max-w-md">
+            <Button
+              onClick={handleWhatsApp}
+              className="w-full bg-[hsl(142,70%,40%)] text-primary-foreground hover:bg-[hsl(142,70%,35%)]"
+            >
+              <MessageCircle className="mr-1 h-4 w-4" /> Compartir invitación por WhatsApp
+            </Button>
+          </div>
         </div>
       )}
 
-      <div className="mx-auto max-w-md px-4 py-6">
-        {isCancelled && (
-          <div className="mb-4 rounded-xl bg-destructive/10 p-3 text-center text-sm font-medium text-destructive animate-fade-in">
-            <AlertTriangle className="mr-1 inline h-4 w-4" /> Evento cancelado
-          </div>
-        )}
+      <div className="mx-auto -mt-3 max-w-md space-y-5 px-4">
+        <section className="rounded-2xl border bg-card p-5 shadow-elevated">
+          <h1 className="font-display text-3xl font-bold leading-tight tracking-tight">{event.title}</h1>
+          {event.host_name && <p className="mt-1 text-sm text-muted-foreground">Invita {event.host_name}</p>}
 
-        <div className="animate-slide-up">
-          <h1 className="font-display text-3xl font-bold leading-tight">{event.title}</h1>
-          {event.host_name && <p className="mt-1 text-sm text-muted-foreground">por {event.host_name}</p>}
-
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center gap-2 text-sm">
+          <div className="mt-4 space-y-2 text-sm">
+            <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-primary" />
               <span>{formatEventDate(event.start_at, event.timezone)}</span>
             </div>
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-primary" />
-              <span>{formatEventTime(event.start_at, event.timezone)}{event.end_at ? ` — ${formatEventTime(event.end_at, event.timezone)}` : ''}</span>
+              <span>
+                {formatEventTime(event.start_at, event.timezone)}
+                {event.end_at ? ` — ${formatEventTime(event.end_at, event.timezone)}` : ""}
+              </span>
             </div>
             {(event.location_name || event.address_street) && (() => {
               const address = buildDisplayAddress(event);
               const mapsUrl = event.location_url || buildGoogleMapsUrl(event);
               return (
-                <div className="flex items-start gap-2 text-sm">
+                <div className="flex items-start gap-2">
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <div>
                     {event.location_name && <span className="font-medium">{event.location_name}</span>}
@@ -246,7 +300,7 @@ const EventPage = () => {
                       </>
                     )}
                     {mapsUrl && (
-                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="ml-1 text-primary underline text-xs">
+                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="ml-1 text-xs text-primary underline">
                         Ver en mapa
                       </a>
                     )}
@@ -256,70 +310,72 @@ const EventPage = () => {
             })()}
           </div>
 
-          {event.description && <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{event.description}</p>}
-        </div>
+          {event.description && <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{event.description}</p>}
 
-        <div className="mt-6 flex gap-3">
-          {[
-            { label: "Van", count: event.counts.going, color: "bg-going" },
-            { label: "Tal vez", count: event.counts.maybe, color: "bg-warning" },
-            { label: "No van", count: event.counts.no, color: "bg-no" },
-          ].map((c) => (
-            <div key={c.label} className="flex-1 rounded-xl border bg-card p-3 text-center shadow-card">
-              <div className={`mx-auto mb-1 h-2 w-2 rounded-full ${c.color}`} />
-              <div className="font-display text-xl font-bold">{c.count}</div>
-              <div className="text-xs text-muted-foreground">{c.label}</div>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {[
+              { label: "Van", count: event.counts.going, color: "bg-going" },
+              { label: "Tal vez", count: event.counts.maybe, color: "bg-warning" },
+              { label: "No van", count: event.counts.no, color: "bg-no" },
+            ].map((c) => (
+              <div key={c.label} className="rounded-xl border bg-background p-2 text-center">
+                <div className={`mx-auto mb-1 h-2 w-2 rounded-full ${c.color}`} />
+                <div className="font-display text-lg font-bold">{c.count}</div>
+                <div className="text-[11px] text-muted-foreground">{c.label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {statusCards
+          .filter((s) => s.show)
+          .map((s) => (
+            <div key={s.label} className={`rounded-xl border px-3 py-2 text-sm font-medium ${s.tone}`}>
+              <s.icon className="mr-1 inline h-4 w-4" /> {s.label}
             </div>
           ))}
-        </div>
 
-        {event.counts.totalGuests > 0 && (
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            {event.counts.totalGuests} persona{event.counts.totalGuests !== 1 ? 's' : ''} en total
-          </p>
-        )}
-
-        <div className="mt-8">
+        <section>
           {myRsvp && !editMode ? (
-            <div className="rounded-xl border bg-card p-4 shadow-card animate-fade-in">
-              <div className="flex items-center justify-between">
+            <div className="rounded-2xl border bg-card p-4 shadow-card animate-fade-in">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Tu estado RSVP</p>
+              <div className="mt-2 flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium">{myRsvp.name || 'Tu RSVP'}</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium text-primary-foreground ${STATUS_COLORS[myRsvp.status] || 'bg-muted'}`}>
+                  <p className="font-medium">{myRsvp.name || "Tu RSVP"}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium text-primary-foreground ${STATUS_COLORS[myRsvp.status] || "bg-muted"}`}>
                       {STATUS_LABELS_SHORT[myRsvp.status] || myRsvp.status}
                     </span>
-                    {myRsvp.approval_status === 'PENDING' && (
-                      <span className="inline-block rounded-full bg-pending px-2 py-0.5 text-xs font-medium text-primary-foreground">
-                        En espera de aprobación
-                      </span>
-                    )}
                     {myRsvp.party_size === 2 && <span className="text-xs text-muted-foreground">+1</span>}
+                    {myRsvp.approval_status === "PENDING" && <span className="text-xs text-muted-foreground">Pendiente de aprobación</span>}
+                    {myRsvp.approval_status === "REJECTED" && <span className="text-xs text-muted-foreground">Rechazado por host</span>}
                   </div>
                 </div>
                 {!isCancelled && event.rsvp_open && (
-                  <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>Editar</Button>
+                  <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
+                    Editar
+                  </Button>
                 )}
               </div>
+              {myRsvp.comment && <p className="mt-2 text-xs text-muted-foreground">“{myRsvp.comment}”</p>}
             </div>
           ) : canRsvp ? (
-            <div className="rounded-xl border bg-card p-5 shadow-card animate-slide-up">
-              <h3 className="mb-4 font-display text-lg font-semibold">
-                {editMode ? 'Editar RSVP' : '¿Vas? Confirma en segundos'}
-              </h3>
+            <div className="rounded-2xl border bg-card p-5 shadow-card animate-slide-up">
+              <h3 className="font-display text-lg font-semibold">{editMode ? "Editar RSVP" : "¿Vas? Confirma tu asistencia"}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Toma menos de un minuto. Tu número nos ayuda a mantener comunicación por WhatsApp.</p>
 
-              <div className="mb-4 flex gap-2">
+              <div className="mt-4 flex gap-2">
                 {(["GOING", "MAYBE", "NO"] as const).map((s) => {
                   const selected = rsvpForm.status === s;
-                  const textColor = s === 'MAYBE' ? 'text-foreground' : 'text-primary-foreground';
+                  const textColor = s === "MAYBE" ? "text-foreground" : "text-primary-foreground";
                   return (
                     <button
                       key={s}
-                      onClick={() => setRsvpForm(f => ({ ...f, status: s, partySize: s === 'NO' ? 1 : f.partySize }))}
+                      onClick={() => setRsvpForm((f) => ({ ...f, status: s, partySize: s === "NO" ? 1 : f.partySize }))}
                       className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all ${
                         selected
                           ? `${STATUS_COLORS[s]} ${textColor} shadow-card ring-2 ring-offset-2 ring-offset-background ring-foreground/20`
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
                       }`}
                     >
                       {STATUS_LABELS[s]}
@@ -328,27 +384,13 @@ const EventPage = () => {
                 })}
               </div>
 
-              <div className="space-y-3">
+              <div className="mt-4 space-y-3">
                 <div className="flex gap-2">
-                  <Input
-                    placeholder="Nombre *"
-                    value={rsvpForm.firstName}
-                    onChange={(e) => setRsvpForm(f => ({ ...f, firstName: e.target.value }))}
-                  />
-                  <Input
-                    placeholder="Apellido *"
-                    value={rsvpForm.lastName}
-                    onChange={(e) => setRsvpForm(f => ({ ...f, lastName: e.target.value }))}
-                  />
+                  <Input placeholder="Nombre *" value={rsvpForm.firstName} onChange={(e) => setRsvpForm((f) => ({ ...f, firstName: e.target.value }))} />
+                  <Input placeholder="Apellido *" value={rsvpForm.lastName} onChange={(e) => setRsvpForm((f) => ({ ...f, lastName: e.target.value }))} />
                 </div>
 
-                <div>
-                  <PhoneInput
-                    value={rsvpForm.phone}
-                    onChange={(v) => setRsvpForm(f => ({ ...f, phone: v }))}
-                    required
-                  />
-                </div>
+                <PhoneInput value={rsvpForm.phone} onChange={(v) => setRsvpForm((f) => ({ ...f, phone: v }))} required />
 
                 {rsvpForm.status !== "NO" && (
                   <div className="flex items-center gap-3">
@@ -357,12 +399,12 @@ const EventPage = () => {
                       {[1, 2].map((n) => (
                         <button
                           key={n}
-                          onClick={() => setRsvpForm(f => ({ ...f, partySize: n }))}
+                          onClick={() => setRsvpForm((f) => ({ ...f, partySize: n }))}
                           className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                            rsvpForm.partySize === n ? 'gradient-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                            rsvpForm.partySize === n ? "gradient-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                           }`}
                         >
-                          {n === 1 ? 'Solo yo' : 'Vamos 2'}
+                          {n === 1 ? "Solo yo" : "Vamos 2"}
                         </button>
                       ))}
                     </div>
@@ -372,46 +414,46 @@ const EventPage = () => {
                 <Textarea
                   placeholder="Mensaje al host (opcional)"
                   value={rsvpForm.comment}
-                  onChange={(e) => setRsvpForm(f => ({ ...f, comment: e.target.value.substring(0, 240) }))}
+                  onChange={(e) => setRsvpForm((f) => ({ ...f, comment: e.target.value.substring(0, 240) }))}
                   rows={2}
                 />
 
                 <div className="flex gap-2">
-                  <Button onClick={handleRsvp} disabled={submitting} className="gradient-primary flex-1 py-5 text-base text-primary-foreground font-semibold">
+                  <Button onClick={handleRsvp} disabled={submitting} className="gradient-primary flex-1 py-5 text-base font-semibold text-primary-foreground">
                     {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {editMode ? 'Guardar' : 'Confirmar asistencia'}
+                    {editMode ? "Guardar cambios" : "Confirmar RSVP"}
                   </Button>
                   {editMode && (
                     <>
-                      <Button variant="outline" onClick={() => setEditMode(false)}>Cancelar</Button>
-                      <Button variant="destructive" size="sm" onClick={handleDeleteRsvp}>Eliminar</Button>
+                      <Button variant="outline" onClick={() => setEditMode(false)}>
+                        Cancelar
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={handleDeleteRsvp}>
+                        Eliminar
+                      </Button>
                     </>
                   )}
                 </div>
               </div>
 
-              {event.privacy_mode === 'APPROVAL_REQUIRED' && !editMode && (
-                <p className="mt-2 text-xs text-muted-foreground text-center">
-                  Tu RSVP necesitará aprobación del organizador
-                </p>
+              {event.privacy_mode === "APPROVAL_REQUIRED" && !editMode && (
+                <p className="mt-2 text-center text-xs text-muted-foreground">Tu RSVP necesitará aprobación del organizador.</p>
               )}
             </div>
           ) : (
             !myRsvp && (
-              <div className="rounded-xl border bg-muted/50 p-4 text-center text-sm text-muted-foreground">
-                {isCancelled ? 'Evento cancelado' : 'RSVP cerrado'}
-              </div>
+              <div className="rounded-xl border bg-muted/50 p-4 text-center text-sm text-muted-foreground">{isCancelled ? "Evento cancelado" : "RSVP cerrado"}</div>
             )
           )}
-        </div>
+        </section>
 
         {myRsvp && !editMode && !user && (
-          <div className="mt-6 rounded-xl border bg-card p-5 shadow-card animate-fade-in text-center">
-            <Users className="mx-auto h-8 w-8 text-primary mb-2" />
+          <div className="rounded-xl border bg-card p-5 text-center shadow-card animate-fade-in">
+            <Users className="mx-auto mb-2 h-8 w-8 text-primary" />
             <p className="font-display text-base font-semibold">¿Quieres ver quién más va?</p>
-            <p className="text-sm text-muted-foreground mt-1">Crea una cuenta para ver la lista de asistentes</p>
+            <p className="mt-1 text-sm text-muted-foreground">Crea una cuenta para seguir el evento y ver asistentes.</p>
             <Button
-              className="gradient-primary text-primary-foreground font-semibold mt-4 w-full"
+              className="gradient-primary mt-4 w-full font-semibold text-primary-foreground"
               onClick={() => {
                 localStorage.setItem("returnTo", `/e/${eventKey}`);
                 navigate("/auth?mode=signup");
@@ -432,7 +474,7 @@ const EventPage = () => {
         )}
 
         {event.show_attendees && myRsvp && !editMode && user && event.rsvps && event.rsvps.length > 0 && (
-          <div className="mt-8 animate-fade-in">
+          <section className="rounded-2xl border bg-card p-4 shadow-card animate-fade-in">
             <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold">
               <Users className="h-5 w-5 text-primary" /> Asistentes
             </h3>
@@ -441,18 +483,22 @@ const EventPage = () => {
               if (group.length === 0) return null;
               const groupLabels: Record<string, string> = { GOING: "Van 🎉", MAYBE: "Tal vez 🤔", NO: "No van" };
               return (
-                <div key={status} className="mb-4">
-                  <p className="mb-2 text-sm font-semibold flex items-center gap-2">
+                <div key={status} className="mb-4 last:mb-0">
+                  <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
                     <span className={`inline-block h-2 w-2 rounded-full ${STATUS_COLORS[status]}`} />
                     {groupLabels[status]} ({group.length})
                   </p>
                   <div className="space-y-2">
                     {group.map((r: any) => {
                       const initials = r.name
-                        ? r.name.split(/\s+/).map((w: string) => w[0]?.toUpperCase()).slice(0, 2).join('')
-                        : '?';
+                        ? r.name
+                            .split(/\s+/)
+                            .map((w: string) => w[0]?.toUpperCase())
+                            .slice(0, 2)
+                            .join("")
+                        : "?";
                       return (
-                        <div key={r.id} className="flex items-center justify-between rounded-xl border bg-card px-4 py-3 shadow-card">
+                        <div key={r.id} className="flex items-center justify-between rounded-xl border bg-background px-3 py-2">
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                               {r.avatar_url && <AvatarImage src={r.avatar_url} alt={r.name} />}
@@ -474,20 +520,20 @@ const EventPage = () => {
                 </div>
               );
             })}
-          </div>
+          </section>
         )}
 
-        <div className="mt-8">
+        <section>
           <h3 className="mb-3 font-display text-lg font-semibold">Updates</h3>
           {event.updates && event.updates.length > 0 ? (
             <div className="space-y-3">
               {event.updates.map((u: any) => (
                 <div
                   key={u.id}
-                  ref={(el) => { updateRefs.current[u.id] = el; }}
-                  className={`rounded-xl border bg-card p-4 shadow-card transition-all ${
-                    highlightUpdate === u.id ? 'ring-2 ring-primary animate-bounce-in' : ''
-                  }`}
+                  ref={(el) => {
+                    updateRefs.current[u.id] = el;
+                  }}
+                  className={`rounded-xl border bg-card p-4 shadow-card transition-all ${highlightUpdate === u.id ? "ring-2 ring-primary animate-bounce-in" : ""}`}
                 >
                   <p className="text-sm">{u.content}</p>
                   {u.link_url && (
@@ -495,15 +541,13 @@ const EventPage = () => {
                       <ExternalLink className="h-3 w-3" /> Ver enlace
                     </a>
                   )}
-                  {u.image_url && <img src={u.image_url} alt="" className="mt-2 rounded-lg max-h-48 w-full object-cover" />}
+                  {u.image_url && <img src={u.image_url} alt="Imagen del update" className="mt-2 max-h-48 w-full rounded-lg object-cover" />}
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(u.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}</span>
                     <button
                       onClick={() => {
                         const text = getShareUpdateText(u.content, guestUrl, u.id);
-                        window.open(getWhatsAppShareUrl(text), '_blank', 'noopener,noreferrer');
+                        window.open(getWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
                       }}
                       className="flex items-center gap-1 text-xs text-primary hover:underline"
                     >
@@ -516,17 +560,20 @@ const EventPage = () => {
           ) : (
             <p className="text-center text-sm text-muted-foreground">Aún no hay updates</p>
           )}
-        </div>
+        </section>
 
-        <div className="mt-8 space-y-2 pb-8">
-          <Button
-            onClick={handleWhatsApp}
-            className="w-full py-5 font-semibold text-white text-base"
-            style={{ backgroundColor: "hsl(142,70%,40%)" }}
-          >
+        <div className="space-y-2 pb-8">
+          <Button onClick={handleWhatsApp} className="w-full py-5 text-base font-semibold text-white" style={{ backgroundColor: "hsl(142,70%,40%)" }}>
             <MessageCircle className="mr-2 h-5 w-5" /> Compartir por WhatsApp
           </Button>
-          <Button variant="outline" className="w-full" onClick={() => { copyToClipboard(guestUrl); toast.success("¡Link copiado!"); }}>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              copyToClipboard(guestUrl);
+              toast.success("¡Link copiado!");
+            }}
+          >
             <Copy className="mr-2 h-4 w-4" /> Copiar link
           </Button>
         </div>

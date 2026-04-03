@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, Copy, MessageCircle, PartyPopper } from "lucide-react";
+import { Check, Copy, Lock, MessageCircle, PartyPopper, Share2 } from "lucide-react";
 import { copyToClipboard, getWhatsAppShareUrl, getShareInviteText } from "@/lib/event-utils";
 import { toast } from "sonner";
 
@@ -20,13 +20,13 @@ const EventCreatedModal = ({ data }: Props) => {
   const [copiedGuest, setCopiedGuest] = useState(false);
   const [copiedHost, setCopiedHost] = useState(false);
 
-  const handleCopy = async (text: string, type: 'guest' | 'host') => {
+  const handleCopy = async (text: string, type: "guest" | "host") => {
     const ok = await copyToClipboard(text);
     if (ok) {
-      if (type === 'guest') setCopiedGuest(true);
+      if (type === "guest") setCopiedGuest(true);
       else setCopiedHost(true);
       toast.success("¡Copiado!");
-      setTimeout(() => type === 'guest' ? setCopiedGuest(false) : setCopiedHost(false), 2000);
+      setTimeout(() => (type === "guest" ? setCopiedGuest(false) : setCopiedHost(false)), 2000);
     }
   };
 
@@ -36,37 +36,45 @@ const EventCreatedModal = ({ data }: Props) => {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-md animate-bounce-in">
         <div className="rounded-2xl border bg-card p-6 shadow-elevated">
-          <div className="mb-6 flex flex-col items-center gap-3">
+          <div className="mb-5 flex flex-col items-center gap-3 text-center">
             <div className="gradient-primary flex h-16 w-16 items-center justify-center rounded-full">
               <PartyPopper className="h-8 w-8 text-primary-foreground" />
             </div>
-            <h1 className="font-display text-2xl font-bold">¡Evento creado!</h1>
-            <p className="text-center text-muted-foreground">{data.event.title}</p>
+            <h1 className="font-display text-2xl font-bold">¡Evento listo para invitar!</h1>
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{data.event.title}</span> ya está publicado.
+            </p>
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Link para invitados</label>
-              <div className="flex gap-2">
-                <Input value={data.guestUrl} readOnly className="text-sm" />
-                <Button variant="outline" size="icon" onClick={() => handleCopy(data.guestUrl, 'guest')}>
+            <div className="rounded-xl border bg-muted/40 p-3">
+              <p className="mb-1 flex items-center gap-1 text-sm font-medium">
+                <Share2 className="h-4 w-4 text-primary" /> Link para invitados
+              </p>
+              <p className="text-xs text-muted-foreground">Este sí compártelo. Es el link público para abrir invitación y responder RSVP.</p>
+              <div className="mt-2 flex gap-2">
+                <Input value={data.guestUrl} readOnly className="text-xs" />
+                <Button variant="outline" size="icon" onClick={() => handleCopy(data.guestUrl, "guest")}>
                   {copiedGuest ? <Check className="h-4 w-4 text-going" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
 
             <a href={getWhatsAppShareUrl(shareText)} target="_blank" rel="noopener noreferrer" className="block">
-              <Button className="w-full bg-[hsl(142,70%,40%)] py-5 text-base font-semibold text-primary-foreground hover:bg-[hsl(142,70%,35%)]">
+              <Button className="w-full bg-[hsl(142,70%,40%)] py-6 text-base font-semibold text-primary-foreground hover:bg-[hsl(142,70%,35%)]">
                 <MessageCircle className="mr-2 h-5 w-5" />
-                Compartir por WhatsApp
+                Compartir invitación por WhatsApp
               </Button>
             </a>
 
-            <div>
-              <label className="mb-1 block text-sm font-medium text-muted-foreground">Link de administración (guárdalo)</label>
-              <div className="flex gap-2">
+            <div className="rounded-xl border border-dashed border-muted-foreground/40 p-3">
+              <p className="mb-1 flex items-center gap-1 text-sm font-medium text-muted-foreground">
+                <Lock className="h-4 w-4" /> Link privado del host
+              </p>
+              <p className="text-xs text-muted-foreground">Solo para ti: administrar RSVP, aprobar invitados y publicar updates.</p>
+              <div className="mt-2 flex gap-2">
                 <Input value={data.hostUrl} readOnly className="text-xs" />
-                <Button variant="outline" size="icon" onClick={() => handleCopy(data.hostUrl, 'host')}>
+                <Button variant="outline" size="icon" onClick={() => handleCopy(data.hostUrl, "host")}>
                   {copiedHost ? <Check className="h-4 w-4 text-going" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
@@ -75,7 +83,7 @@ const EventCreatedModal = ({ data }: Props) => {
           </div>
 
           <Button variant="outline" className="mt-6 w-full" onClick={() => navigate(`/h/${data.event.event_key}`)}>
-            Ir al panel de administración →
+            Ir al panel de administración
           </Button>
         </div>
       </div>

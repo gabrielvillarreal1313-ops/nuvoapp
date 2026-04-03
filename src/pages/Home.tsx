@@ -127,7 +127,7 @@ const Home = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-3xl font-bold text-primary-foreground tracking-tight">Nuvo</h1>
-            <p className="text-sm text-primary-foreground/75 mt-0.5">Tu agenda social</p>
+            <p className="text-sm text-primary-foreground/75 mt-0.5">Tu espacio para organizar y responder invitaciones</p>
           </div>
           <Button
             onClick={() => navigate("/crear")}
@@ -206,7 +206,7 @@ const Home = () => {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         ev.role === "host" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                       }`}>
-                        {ev.role === "host" ? "Org." : "Invitado"}
+                        {ev.role === "host" ? "Host" : "RSVP"}
                       </span>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
@@ -232,7 +232,7 @@ const Home = () => {
         {upcomingEvents.length > 0 ? (
           <div>
             <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              Próximos eventos
+              Tus próximas invitaciones
             </h2>
             <div className="space-y-2">
               {upcomingEvents.map((ev) => (
@@ -256,7 +256,7 @@ const Home = () => {
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       ev.role === "host" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                     }`}>
-                      {ev.role === "host" ? "Org." : "Invitado"}
+                      {ev.role === "host" ? "Host" : "RSVP"}
                     </span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
